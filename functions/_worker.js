@@ -11,7 +11,7 @@ const app = new Hono()
 
 app.use('*', cors({ origin: '*' }))
 
-app.use('*', async (c, next) => {
+app.use('/api/*', async (c, next) => {
   const password = c.env.PASSWORD
   if (password) {
     const auth = c.req.header('Authorization')
