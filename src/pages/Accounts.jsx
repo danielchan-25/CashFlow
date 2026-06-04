@@ -20,7 +20,7 @@ export default function Accounts() {
 
   function startEdit(account) {
     setEditing(account)
-    setForm({ name: account.name, type: account.type, balance: String(account.balance) })
+    setForm({ name: account.name, type: account.type, balance: (account.balance || 0).toFixed(2) })
     setShowForm(true)
   }
 
