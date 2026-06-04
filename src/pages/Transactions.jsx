@@ -42,6 +42,19 @@ function aggregateByRoot(data, catMap) {
   return Object.values(rootMap).sort((a, b) => b.value - a.value)
 }
 
+function getPageNumbers(current, total) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+  const pages = []
+  pages.push(1)
+  if (current > 3) pages.push('...')
+  for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
+    pages.push(i)
+  }
+  if (current < total - 2) pages.push('...')
+  pages.push(total)
+  return pages
+}
+
 export default function Transactions() {
   const [transactions, setTransactions] = useState([])
   const [accounts, setAccounts] = useState([])
@@ -285,17 +298,31 @@ export default function Transactions() {
       />
 
       {totalPages > 1 && (
-        <div className="flex justify-center gap-1.5 animate-in slide-up fill-both">
-          {Array.from({ length: totalPages }, (_, i) => (
-            <button key={i} onClick={() => setFilters(f => ({ ...f, page: i + 1 }))}
-              className={`w-8 h-8 rounded-lg text-xs font-medium transition-all duration-200 ${
-                filters.page === i + 1
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'bg-muted text-muted-foreground hover:bg-accent'
-              }`}>
-              {i + 1}
-            </button>
-          ))}
+        <div className="flex justify-center items-center gap-1.5 animate-in slide-up fill-both">
+          <button onClick={() => setFilters(f => ({ ...f, page: Math.max(1, filters.page - 1) }))}
+            disabled={filters.page <= 1}
+            className="w-8 h-8 rounded-lg text-xs font-medium bg-muted text-muted-foreground hover:bg-accent transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+            ‹
+          </button>
+          {getPageNumbers(filters.page, totalPages).map((p, i) =>
+            p === '...' ? (
+              <span key={`ellipsis-${i}`} className="text-xs text-muted-foreground px-1">···</span>
+            ) : (
+              <button key={p} onClick={() => setFilters(f => ({ ...f, page: p }))}
+                className={`w-8 h-8 rounded-lg text-xs font-medium transition-all duration-200 ${
+                  filters.page === p
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'bg-muted text-muted-foreground hover:bg-accent'
+                }`}>
+                {p}
+              </button>
+            )
+          )}
+          <button onClick={() => setFilters(f => ({ ...f, page: Math.min(totalPages, filters.page + 1) }))}
+            disabled={filters.page >= totalPages}
+            className="w-8 h-8 rounded-lg text-xs font-medium bg-muted text-muted-foreground hover:bg-accent transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+            ›
+          </button>
         </div>
       )}
     </div>
