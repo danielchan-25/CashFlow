@@ -11,14 +11,47 @@ const COLORS = [
   '#F8C471', '#82E0AA', '#F1948A', '#85929E', '#73C6B6',
 ]
 
+function buildCategoryMap(categories) {
+  const map = {}
+  categories.forEach(c => { map[c.id] = { ...c } })
+  return map
+}
+
+function findRoot(catId, catMap) {
+  let current = catMap[catId]
+  while (current && current.parent_id && catMap[current.parent_id]) {
+    current = catMap[current.parent_id]
+  }
+  return current
+}
+
+function aggregateByRoot(data, catMap) {
+  const rootMap = {}
+  data.forEach(item => {
+    const root = findRoot(item.id, catMap)
+    const rootId = root ? root.id : item.id
+    const rootName = root ? root.name : item.name
+    const rootIcon = root ? root.icon : item.icon
+    const key = String(rootId)
+    if (!rootMap[key]) {
+      rootMap[key] = { name: rootIcon + ' ' + rootName, value: 0 }
+    }
+    rootMap[key].value += item.total
+  })
+  return Object.values(rootMap).sort((a, b) => b.value - a.value)
+}
+
 export default function Transactions() {
   const [transactions, setTransactions] = useState([])
   const [accounts, setAccounts] = useState([])
+  const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filters, setFilters] = useState({ type: '', account_id: '', search: '', page: 1 })
+  const [filters, setFilters] = useState({ type: '', account_id: '', category_id: '', search: '', page: 1 })
   const [total, setTotal] = useState(0)
   const [summary, setSummary] = useState(null)
   const [month, setMonth] = useState(currentMonth())
+  const [catLevel1, setCatLevel1] = useState('')
+  const [catLevel2, setCatLevel2] = useState('')
 
   const loadData = useCallback(async () => {
     const [txRes, accRes] = await Promise.all([
@@ -30,7 +63,10 @@ export default function Transactions() {
     setAccounts(accRes.data)
   }, [filters])
 
-  useEffect(() => { loadData().finally(() => setLoading(false)) }, [loadData])
+  useEffect(() => {
+    loadData().finally(() => setLoading(false))
+    api.getCategories().then(r => setCategories(r.data))
+  }, [loadData])
 
   useEffect(() => {
     api.getSummary(month).then(r => setSummary(r))
@@ -42,17 +78,55 @@ export default function Transactions() {
     loadData()
   }
 
+  const catMap = buildCategoryMap(categories)
+
+  const filteredCats = categories.filter(c => !filters.type || c.type === filters.type)
+  const catChildren = {}
+  const roots = []
+  filteredCats.forEach(c => {
+    if (c.parent_id) {
+      if (!catChildren[c.parent_id]) catChildren[c.parent_id] = []
+      catChildren[c.parent_id].push(c)
+    } else {
+      roots.push(c)
+    }
+  })
+  roots.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+
+  const l1Options = roots
+  const l2Options = catLevel1 ? catChildren[Number(catLevel1)] || [] : []
+  const l3Options = catLevel2 ? catChildren[Number(catLevel2)] || [] : []
+
   const totalPages = Math.ceil(total / 50)
 
-  const expenseData = summary?.expenseByCategory?.map(c => ({
-    name: c.icon + ' ' + c.name,
-    value: c.total,
-  })) || []
+  const expensePieData = aggregateByRoot(summary?.expenseByCategory || [], catMap)
+  const incomePieData = aggregateByRoot(summary?.incomeByCategory || [], catMap)
 
-  const incomeData = summary?.incomeByCategory?.map(c => ({
-    name: c.icon + ' ' + c.name,
-    value: c.total,
-  })) || []
+  function handleTypeChange(e) {
+    const val = e.target.value
+    setFilters(f => ({ ...f, type: val, category_id: '', page: 1 }))
+    setCatLevel1('')
+    setCatLevel2('')
+  }
+
+  function handleLevel1(e) {
+    const val = e.target.value
+    setCatLevel1(val)
+    setCatLevel2('')
+    const children = val ? catChildren[Number(val)] || [] : []
+    setFilters(f => ({ ...f, category_id: children.length === 0 ? val : '', page: 1 }))
+  }
+
+  function handleLevel2(e) {
+    const val = e.target.value
+    setCatLevel2(val)
+    const children = val ? catChildren[Number(val)] || [] : []
+    setFilters(f => ({ ...f, category_id: children.length === 0 ? val : '', page: 1 }))
+  }
+
+  function handleLevel3(e) {
+    setFilters(f => ({ ...f, category_id: e.target.value, page: 1 }))
+  }
 
   function renderPie(data, title, total) {
     if (!data.length) return null
@@ -93,32 +167,32 @@ export default function Transactions() {
 
       {summary && (
         <>
-          <div className="grid grid-cols-3 gap-3 animate-in slide-up fill-both">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 animate-in slide-up fill-both">
             <div className="glass-card rounded-2xl px-4 py-3.5 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-red-500/10 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
                 <TrendingDown size={18} className="text-red-500" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-[11px] text-muted-foreground">本月支出</p>
-                <p className="text-sm font-bold text-red-500 tabular-nums">¥{formatMoney(summary.expense)}</p>
+                <p className="text-sm font-bold text-red-500 tabular-nums truncate">¥{formatMoney(summary.expense)}</p>
               </div>
             </div>
             <div className="glass-card rounded-2xl px-4 py-3.5 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
                 <TrendingUp size={18} className="text-emerald-500" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-[11px] text-muted-foreground">本月收入</p>
-                <p className="text-sm font-bold text-emerald-500 tabular-nums">¥{formatMoney(summary.income)}</p>
+                <p className="text-sm font-bold text-emerald-500 tabular-nums truncate">¥{formatMoney(summary.income)}</p>
               </div>
             </div>
             <div className="glass-card rounded-2xl px-4 py-3.5 flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${summary.balance >= 0 ? 'bg-primary/10' : 'bg-red-500/10'}`}>
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${summary.balance >= 0 ? 'bg-primary/10' : 'bg-red-500/10'}`}>
                 <Wallet size={18} className={summary.balance >= 0 ? 'text-primary' : 'text-red-500'} />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-[11px] text-muted-foreground">净余额</p>
-                <p className={`text-sm font-bold tabular-nums ${summary.balance >= 0 ? 'text-primary' : 'text-red-500'}`}>
+                <p className={`text-sm font-bold tabular-nums truncate ${summary.balance >= 0 ? 'text-primary' : 'text-red-500'}`}>
                   {summary.balance >= 0 ? '+' : ''}¥{formatMoney(summary.balance)}
                 </p>
               </div>
@@ -132,15 +206,15 @@ export default function Transactions() {
                 className="bg-muted rounded-lg px-2.5 py-1 text-xs outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all" />
             </div>
             <div className="flex flex-col sm:flex-row gap-6">
-              {renderPie(expenseData, '💸 支出分类', summary.expense)}
-              {renderPie(incomeData, '💰 收入分类', summary.income)}
+              {renderPie(expensePieData, '💸 支出分类', summary.expense)}
+              {renderPie(incomePieData, '💰 收入分类', summary.income)}
             </div>
           </div>
         </>
       )}
 
       <div className="glass-card-flat rounded-2xl p-3 flex flex-wrap gap-2 items-center">
-        <select value={filters.type} onChange={e => setFilters(f => ({ ...f, type: e.target.value, page: 1 }))}
+        <select value={filters.type} onChange={handleTypeChange}
           className="bg-muted rounded-lg px-3 py-1.5 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all">
           <option value="">📋 全部类型</option>
           <option value="expense">支出</option>
@@ -158,6 +232,30 @@ export default function Transactions() {
             className="w-full bg-muted rounded-lg pl-7 pr-2.5 py-1.5 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all" />
         </div>
       </div>
+
+      {categories.length > 0 && (
+        <div className="glass-card-flat rounded-2xl p-3 flex flex-wrap gap-2 items-center">
+          <select value={catLevel1} onChange={handleLevel1}
+            className="bg-muted rounded-lg px-3 py-1.5 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all">
+            <option value="">📂 全部大类</option>
+            {l1Options.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+          </select>
+          {l2Options.length > 0 && (
+            <select value={catLevel2} onChange={handleLevel2}
+              className="bg-muted rounded-lg px-3 py-1.5 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all">
+              <option value="">📁 全部中类</option>
+              {l2Options.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+            </select>
+          )}
+          {l3Options.length > 0 && (
+            <select value={filters.category_id} onChange={handleLevel3}
+              className="bg-muted rounded-lg px-3 py-1.5 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all">
+              <option value="">📄 全部小类</option>
+              {l3Options.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+            </select>
+          )}
+        </div>
+      )}
 
       <TransactionList
         transactions={transactions}

@@ -12,7 +12,21 @@ export async function handleTransactions(c) {
 
     if (type) { where.push('t.type = ?'); params.push(type) }
     if (account_id) { where.push('t.account_id = ?'); params.push(Number(account_id)) }
-    if (category_id) { where.push('t.category_id = ?'); params.push(Number(category_id)) }
+    if (category_id) {
+      const allCats = await db.prepare('SELECT id, parent_id FROM categories').all()
+      const ids = [Number(category_id)]
+      function collect(id) {
+        for (const c of allCats.results) {
+          if (c.parent_id === id) {
+            ids.push(c.id)
+            collect(c.id)
+          }
+        }
+      }
+      collect(Number(category_id))
+      where.push(`t.category_id IN (${ids.map(() => '?').join(',')})`)
+      params.push(...ids)
+    }
     if (start) { where.push('t.date >= ?'); params.push(start) }
     if (end) { where.push('t.date <= ?'); params.push(end) }
     if (search) { where.push('t.note LIKE ?'); params.push(`%${search}%`) }
