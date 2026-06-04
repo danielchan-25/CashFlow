@@ -20,7 +20,7 @@ export default function Accounts() {
 
   function startEdit(account) {
     setEditing(account)
-    setForm({ name: account.name, type: account.type, balance: '' })
+    setForm({ name: account.name, type: account.type, balance: String(account.balance) })
     setShowForm(true)
   }
 
@@ -34,7 +34,7 @@ export default function Accounts() {
     e.preventDefault()
     if (!form.name) return
     if (editing) {
-      await api.updateAccount(editing.id, { name: form.name, type: form.type })
+      await api.updateAccount(editing.id, { name: form.name, type: form.type, balance: Number(form.balance) || 0 })
     } else {
       await api.createAccount({ name: form.name, type: form.type, balance: Number(form.balance) || 0 })
     }
@@ -81,11 +81,9 @@ export default function Accounts() {
               <option value="credit">💳 信用卡</option>
               <option value="investment">📈 投资</option>
             </select>
-            {!editing && (
-              <input value={form.balance} onChange={e => setForm(f => ({ ...f, balance: e.target.value }))}
-                inputMode="decimal" placeholder="💰 初始余额"
-                className="w-28 bg-muted rounded-lg px-3.5 py-2.5 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all" />
-            )}
+            <input value={form.balance} onChange={e => setForm(f => ({ ...f, balance: e.target.value }))}
+              inputMode="decimal" placeholder={editing ? '💰 修改余额' : '💰 初始余额'}
+              className="w-28 bg-muted rounded-lg px-3.5 py-2.5 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all" />
           </div>
           <button type="submit"
             className="w-full py-2.5 rounded-xl text-sm font-semibold text-primary-foreground bg-primary hover:brightness-110 transition-all active:scale-[0.97] shadow-sm">

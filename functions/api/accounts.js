@@ -17,10 +17,10 @@ export async function handleAccounts(c) {
   }
 
   if (method === 'PUT') {
-    const { name, type, sort_order } = await c.req.json()
+    const { name, type, sort_order, balance } = await c.req.json()
     await db.prepare(
-      'UPDATE accounts SET name=?, type=?, sort_order=? WHERE id=?'
-    ).bind(name, type, sort_order || 0, Number(id)).run()
+      'UPDATE accounts SET name=?, type=?, sort_order=?, balance=? WHERE id=?'
+    ).bind(name, type, sort_order || 0, balance !== undefined ? balance : 0, Number(id)).run()
     return c.json({ success: true })
   }
 
