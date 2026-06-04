@@ -156,28 +156,30 @@ export default function Transactions() {
   function renderPie(data, title, total) {
     if (!data.length) return null
     return (
-      <div className="flex-1 min-w-0">
-        <h3 className="text-sm font-semibold mb-2">{title}</h3>
-        <ResponsiveContainer width="100%" height={220}>
-          <PieChart>
-            <Pie
-              data={data}
-              cx="50%" cy="50%"
-              innerRadius={45}
-              outerRadius={85}
-              paddingAngle={2}
-              dataKey="value"
-            >
-              {data.map((_, i) => (
-                <Cell key={i} fill={COLORS[i % COLORS.length]} />
-              ))}
-            </Pie>
-            <Tooltip formatter={(value) => `¥${formatMoney(value)}`} />
-            <Legend iconSize={8} wrapperStyle={{ fontSize: 11 }} />
-          </PieChart>
-        </ResponsiveContainer>
-        <p className="text-center text-xs text-muted-foreground mt-1">¥{formatMoney(total)}</p>
-      </div>
+      <div className="flex-1 min-w-0" style={{ pointerEvents: 'none' }}>
+          <h3 className="text-sm font-semibold mb-2">{title}</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <PieChart>
+              <Pie
+                data={data}
+                cx="50%" cy="50%"
+                innerRadius={45}
+                outerRadius={85}
+                paddingAngle={2}
+                dataKey="value"
+              >
+                {data.map((_, i) => (
+                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value) => [`¥${formatMoney(value)} (${((value / total) * 100).toFixed(1)}%)`, '金额']} />
+              <Legend iconSize={8} wrapperStyle={{ fontSize: 11 }}
+                formatter={(value, entry) => `${value} ${((entry.payload?.value || 0) / total * 100).toFixed(1)}%`}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+          <p className="text-center text-xs text-muted-foreground mt-1">¥{formatMoney(total)}</p>
+        </div>
     )
   }
 
