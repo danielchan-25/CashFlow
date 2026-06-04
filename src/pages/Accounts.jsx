@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
 import { formatMoney } from '../lib/utils'
-import { Wallet, Plus, X, Pencil, Landmark, CreditCard, PiggyBank, Building2, Smartphone } from 'lucide-react'
-
-const typeIcons = { cash: Building2, bank: Landmark, credit: CreditCard, investment: PiggyBank, ewallet: Smartphone }
+import { Wallet, Plus, X, Pencil } from 'lucide-react'
 const typeLabels = { cash: '现金', bank: '银行卡', credit: '信用卡', investment: '投资', ewallet: '电子钱包' }
 const typeEmojis = { cash: '💵', bank: '🏦', credit: '💳', investment: '📈', ewallet: '📱' }
 
@@ -97,16 +95,14 @@ export default function Accounts() {
       )}
 
       <div className="space-y-2">
-        {accounts.map((a, i) => {
-          const TypeIcon = typeIcons[a.type] || Building2
-          return (
-            <div key={a.id}
-              className="glass-card rounded-2xl px-4 py-3.5 flex items-center justify-between transition-all duration-200 hover:bg-accent/30 animate-in slide-up fill-both"
-              style={{ animationDelay: `${i * 40}ms` }}>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                  <TypeIcon size={18} />
-                </div>
+        {accounts.map((a, i) => (
+          <div key={a.id}
+            className="glass-card rounded-2xl px-4 py-3.5 flex items-center justify-between transition-all duration-200 hover:bg-accent/30 animate-in slide-up fill-both"
+            style={{ animationDelay: `${i * 40}ms` }}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-lg">
+                {typeEmojis[a.type] || '🏦'}
+              </div>
                 <div>
                   <p className="text-sm font-medium">{typeEmojis[a.type] || ''} {a.name}</p>
                   <p className="text-xs text-muted-foreground">{typeLabels[a.type] || a.type}</p>
@@ -127,8 +123,7 @@ export default function Accounts() {
                 </button>
               </div>
             </div>
-          )
-        })}
+        ))}
         {!accounts.length && (
           <p className="text-sm py-8 text-center text-muted-foreground">🏦 暂无账户，点击上方添加</p>
         )}
