@@ -35,6 +35,20 @@ export default function TransactionForm({ onDone, initial }) {
     api.getCategories().then(r => setCategories(r.data))
   }, [])
 
+  useEffect(() => {
+    if (!initial?.category_id || categories.length === 0) return
+    const cat = categories.find(c => c.id === Number(initial.category_id))
+    if (!cat) return
+    const path = []
+    let current = cat
+    while (current) {
+      path.unshift(current)
+      current = current.parent_id ? categories.find(c => c.id === current.parent_id) : null
+    }
+    if (path.length >= 1) setCatLevel1(String(path[0].id))
+    if (path.length >= 2) setCatLevel2(String(path[1].id))
+  }, [initial?.id, categories])
+
   const { map, roots } = buildTree(categories)
   const filteredRoots = roots.filter(c => c.type === form.type)
   const l1Options = filteredRoots

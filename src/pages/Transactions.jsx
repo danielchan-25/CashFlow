@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../lib/api'
 import TransactionList from '../components/TransactionList'
+import TransactionForm from '../components/TransactionForm'
 import { formatMoney, currentMonth } from '../lib/utils'
 import { Search, TrendingDown, TrendingUp, Wallet } from 'lucide-react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
@@ -52,6 +53,7 @@ export default function Transactions() {
   const [month, setMonth] = useState(currentMonth())
   const [catLevel1, setCatLevel1] = useState('')
   const [catLevel2, setCatLevel2] = useState('')
+  const [editing, setEditing] = useState(null)
 
   const loadData = useCallback(async () => {
     const [txRes, accRes] = await Promise.all([
@@ -76,6 +78,16 @@ export default function Transactions() {
     if (!confirm('确定删除这笔记录？')) return
     await api.deleteTransaction(id)
     loadData()
+  }
+
+  function handleEdit(tx) {
+    setEditing(tx)
+  }
+
+  function handleEditDone() {
+    setEditing(null)
+    loadData()
+    api.getSummary(month).then(r => setSummary(r))
   }
 
   const catMap = buildCategoryMap(categories)
@@ -233,7 +245,7 @@ export default function Transactions() {
         </div>
       </div>
 
-      {categories.length > 0 && (
+      {filters.type && categories.length > 0 && (
         <div className="glass-card-flat rounded-2xl p-3 flex flex-wrap gap-2 items-center">
           <select value={catLevel1} onChange={handleLevel1}
             className="bg-muted rounded-lg px-3 py-1.5 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all">
@@ -257,8 +269,17 @@ export default function Transactions() {
         </div>
       )}
 
+      {editing && (
+        <TransactionForm
+          key={editing.id}
+          initial={editing}
+          onDone={handleEditDone}
+        />
+      )}
+
       <TransactionList
         transactions={transactions}
+        onEdit={handleEdit}
         onDelete={handleDelete}
         loading={loading}
       />
