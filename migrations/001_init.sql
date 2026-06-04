@@ -16,6 +16,7 @@ CREATE TABLE categories (
   name TEXT NOT NULL,
   icon TEXT NOT NULL DEFAULT '📦',
   type TEXT NOT NULL,
+  parent_id INTEGER REFERENCES categories(id),
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

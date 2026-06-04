@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:worker": "wrangler pages dev dist --d1=cashflow=89694fbf-dbb5-4253-84a5-d6b6c53af612 --port=8788",
     "build": "vite build && npm run build:worker",
     "build:worker": "esbuild functions/_worker.js --bundle --outfile=dist/_worker.js --format=esm --platform=browser --external:__STATIC_CONTENT_MANIFEST",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:migrate": "wrangler d1 execute cashflow --file=migrations/001_init.sql --local"
   },
   "dependencies": {
     "hono": "^4.7.0",

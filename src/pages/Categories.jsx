@@ -32,6 +32,15 @@ export default function Categories() {
     return roots
   }
 
+  function flattenTree(nodes, depth = 0) {
+    const result = []
+    for (const node of nodes) {
+      result.push({ id: node.id, name: node.name, icon: node.icon, depth })
+      result.push(...flattenTree(node.children, depth + 1))
+    }
+    return result
+  }
+
   function renderTree(nodes, depth = 0) {
     return nodes.map(node => (
       <div key={node.id}>
@@ -61,7 +70,7 @@ export default function Categories() {
   }
 
   const emojis = form.type === 'expense' ? expenseEmojis : incomeEmojis
-  const rootCats = categories.filter(c => !c.parent_id && c.type === form.type)
+  const parentOptions = flattenTree(buildTree(form.type))
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -130,7 +139,11 @@ export default function Categories() {
           <select value={form.parent_id} onChange={e => setForm(f => ({ ...f, parent_id: e.target.value }))}
             className="w-full bg-muted rounded-lg px-3.5 py-2.5 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all">
             <option value="">📂 顶级分类（大类）</option>
-            {rootCats.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+            {parentOptions.map(c => (
+              <option key={c.id} value={c.id}>
+                {'　'.repeat(c.depth + 1)}{c.icon} {c.name}
+              </option>
+            ))}
           </select>
 
           <button type="submit"
