@@ -235,7 +235,7 @@ export default function Transactions() {
         <select value={filters.account_id} onChange={e => setFilters(f => ({ ...f, account_id: e.target.value, page: 1 }))}
           className="bg-muted rounded-lg px-3 py-1.5 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all">
           <option value="">🏦 全部账户</option>
-          {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+          {accounts.map(a => <option key={a.id} value={a.id}>{(a.type === 'cash' ? '💵' : a.type === 'bank' ? '🏦' : a.type === 'credit' ? '💳' : a.type === 'ewallet' ? '📱' : a.type === 'investment' ? '📈' : '')} {a.name}</option>)}
         </select>
         <div className="relative flex-1 min-w-[120px]">
           <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />

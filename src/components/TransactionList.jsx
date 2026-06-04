@@ -37,7 +37,7 @@ export default function TransactionList({ transactions, onEdit, onDelete, loadin
           style={{ animationDelay: `${i * 30}ms` }}>
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${t.type === 'income' ? 'text-primary' : 'text-destructive'}`}
             style={{ background: `hsl(var(--${t.type === 'income' ? 'primary' : 'destructive'}) / 0.12)` }}>
-            {t.type === 'income' ? <ArrowUpFromLine size={16} /> : <ArrowDownToLine size={16} />}
+            {t.category_icon || (t.type === 'income' ? <ArrowUpFromLine size={16} /> : <ArrowDownToLine size={16} />)}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{t.category_icon || ''} {t.category_name || t.note || '未分类'}</p>
