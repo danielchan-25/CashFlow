@@ -5,6 +5,7 @@ import { Wallet, Plus, X, Pencil, Landmark, CreditCard, PiggyBank, Building2, Sm
 
 const typeIcons = { cash: Building2, bank: Landmark, credit: CreditCard, investment: PiggyBank, ewallet: Smartphone }
 const typeLabels = { cash: '现金', bank: '银行卡', credit: '信用卡', investment: '投资', ewallet: '电子钱包' }
+const typeEmojis = { cash: '💵', bank: '🏦', credit: '💳', investment: '📈', ewallet: '📱' }
 
 export default function Accounts() {
   const [accounts, setAccounts] = useState([])
@@ -107,7 +108,7 @@ export default function Accounts() {
                   <TypeIcon size={18} />
                 </div>
                 <div>
-                  <p className="text-sm font-medium">{a.name}</p>
+                  <p className="text-sm font-medium">{typeEmojis[a.type] || ''} {a.name}</p>
                   <p className="text-xs text-muted-foreground">{typeLabels[a.type] || a.type}</p>
                 </div>
               </div>

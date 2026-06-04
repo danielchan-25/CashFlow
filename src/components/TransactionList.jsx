@@ -40,7 +40,7 @@ export default function TransactionList({ transactions, onEdit, onDelete, loadin
             {t.type === 'income' ? <ArrowUpFromLine size={16} /> : <ArrowDownToLine size={16} />}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{t.category_name || t.note || '未分类'}</p>
+            <p className="text-sm font-medium truncate">{t.category_icon || ''} {t.category_name || t.note || '未分类'}</p>
             <p className="text-xs text-muted-foreground truncate">
               {formatDate(t.date)}{t.account_name && ` · ${t.account_name}`}{t.note && ` · ${t.note}`}
             </p>
