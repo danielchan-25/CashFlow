@@ -1,11 +1,26 @@
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
-import { currentMonth } from '../lib/utils'
 import { ArrowUpFromLine, ArrowDownToLine } from 'lucide-react'
+
+function buildTree(categories) {
+  const map = {}
+  const roots = []
+  categories.forEach(c => { map[c.id] = { ...c, children: [] } })
+  categories.forEach(c => {
+    if (c.parent_id && map[c.parent_id]) {
+      map[c.parent_id].children.push(map[c.id])
+    } else if (!c.parent_id) {
+      roots.push(map[c.id])
+    }
+  })
+  return { map, roots }
+}
 
 export default function TransactionForm({ onDone, initial }) {
   const [accounts, setAccounts] = useState([])
   const [categories, setCategories] = useState([])
+  const [catLevel1, setCatLevel1] = useState('')
+  const [catLevel2, setCatLevel2] = useState('')
   const [form, setForm] = useState(initial || {
     date: new Date().toISOString().slice(0, 7) + '-01',
     type: 'expense',
@@ -20,7 +35,32 @@ export default function TransactionForm({ onDone, initial }) {
     api.getCategories().then(r => setCategories(r.data))
   }, [])
 
+  const { map, roots } = buildTree(categories)
+  const filteredRoots = roots.filter(c => c.type === form.type)
+  const l1Options = filteredRoots
+  const l2Options = catLevel1 ? map[Number(catLevel1)]?.children || [] : []
+  const l3Options = catLevel2 ? map[Number(catLevel2)]?.children || [] : []
+
   function set(k, v) { setForm(f => ({ ...f, [k]: v })) }
+
+  function handleLevel1(e) {
+    const val = e.target.value
+    setCatLevel1(val)
+    setCatLevel2('')
+    const children = val ? map[Number(val)]?.children || [] : []
+    set('category_id', children.length === 0 ? val : '')
+  }
+
+  function handleLevel2(e) {
+    const val = e.target.value
+    setCatLevel2(val)
+    const children = val ? map[Number(val)]?.children || [] : []
+    set('category_id', children.length === 0 ? val : '')
+  }
+
+  function handleLevel3(e) {
+    set('category_id', e.target.value)
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -33,14 +73,13 @@ export default function TransactionForm({ onDone, initial }) {
     onDone?.()
   }
 
-  const filteredCategories = categories.filter(c => c.type === form.type)
   const inputClass = 'w-full bg-muted rounded-lg px-3.5 py-2.5 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all duration-200'
 
   return (
     <form onSubmit={handleSubmit} className="glass-card-strong rounded-2xl p-5 space-y-3.5 animate-in slide-up fill-both" style={{ animationDelay: '50ms' }}>
       <div className="flex p-1 rounded-xl bg-muted">
         {['expense', 'income'].map(t => (
-          <button key={t} type="button" onClick={() => set('type', t)}
+          <button key={t} type="button" onClick={() => { set('type', t); setCatLevel1(''); setCatLevel2(''); set('category_id', '') }}
             className={`flex-1 py-2 rounded-[10px] text-sm font-semibold flex items-center justify-center gap-1.5 transition-all duration-200 ${form.type === t ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>
             {t === 'expense' ? <ArrowDownToLine size={14} /> : <ArrowUpFromLine size={14} />}
             {t === 'expense' ? '💸 支出' : '💰 收入'}
@@ -59,12 +98,25 @@ export default function TransactionForm({ onDone, initial }) {
           <option value="">🏦 选择账户</option>
           {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
-        <select value={form.category_id} onChange={e => set('category_id', e.target.value)}
-          className={inputClass}>
-          <option value="">🏷️ 选择分类</option>
-          {filteredCategories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+        <select value={catLevel1} onChange={handleLevel1} className={inputClass}>
+          <option value="">📂 选择大类</option>
+          {l1Options.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
         </select>
       </div>
+
+      {l2Options.length > 0 && (
+        <select value={catLevel2} onChange={handleLevel2} className={inputClass}>
+          <option value="">📁 选择中类</option>
+          {l2Options.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+        </select>
+      )}
+
+      {l3Options.length > 0 && (
+        <select value={form.category_id} onChange={handleLevel3} className={inputClass}>
+          <option value="">📄 选择小类</option>
+          {l3Options.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+        </select>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <input value={form.date} onChange={e => set('date', e.target.value)}

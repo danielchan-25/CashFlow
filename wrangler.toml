@@ -3,8 +3,10 @@ pages_build_output_dir = "dist"
 compatibility_date = "2026-06-01"
 compatibility_flags = ["nodejs_compat"]
 
-# database_id is injected via CI (GitHub Secrets: D1_DATABASE_ID)
 [[d1_databases]]
 binding = "cashflow"
 database_name = "cashflow"
-database_id = "__D1_DATABASE_ID__"
+database_id = "89694fbf-dbb5-4253-84a5-d6b6c53af612"
+
+
+

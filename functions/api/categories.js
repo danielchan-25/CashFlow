@@ -9,22 +9,26 @@ export async function handleCategories(c) {
   }
 
   if (method === 'POST') {
-    const { name, icon, type } = await c.req.json()
+    const { name, icon, type, parent_id } = await c.req.json()
     const result = await db.prepare(
-      'INSERT INTO categories (name, icon, type) VALUES (?, ?, ?)'
-    ).bind(name, icon || '📦', type).run()
+      'INSERT INTO categories (name, icon, type, parent_id) VALUES (?, ?, ?, ?)'
+    ).bind(name, icon || '📦', type, parent_id || null).run()
     return c.json({ id: result.meta.last_row_id }, 201)
   }
 
   if (method === 'PUT') {
-    const { name, icon, sort_order } = await c.req.json()
+    const { name, icon, parent_id } = await c.req.json()
     await db.prepare(
-      'UPDATE categories SET name=?, icon=?, sort_order=? WHERE id=?'
-    ).bind(name, icon, sort_order || 0, Number(id)).run()
+      'UPDATE categories SET name=?, icon=?, parent_id=? WHERE id=?'
+    ).bind(name, icon, parent_id || null, Number(id)).run()
     return c.json({ success: true })
   }
 
   if (method === 'DELETE') {
+    const children = await db.prepare('SELECT COUNT(*) as cnt FROM categories WHERE parent_id = ?').bind(Number(id)).first()
+    if (children.cnt > 0) {
+      return c.json({ error: 'has_children', message: '请先删除子分类' }, 400)
+    }
     await db.prepare('DELETE FROM categories WHERE id = ?').bind(Number(id)).run()
     return c.json({ success: true })
   }
