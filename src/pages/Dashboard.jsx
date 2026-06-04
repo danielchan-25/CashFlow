@@ -119,7 +119,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-center gap-1.5">
           <span className="text-3xl font-bold text-muted-foreground/50">¥</span>
           <input value={form.amount} onChange={e => set('amount', e.target.value)}
-            type="number" step="0.01" placeholder="0.00"
+            type="number" step="0.01" inputMode="decimal" placeholder="0.00"
             className="receipt-amount-input w-44 bg-transparent border-0 outline-none text-3xl font-bold tabular-nums text-center placeholder:text-muted-foreground/25"
             style={{ fontFamily: 'JetBrains Mono, monospace' }} autoFocus />
         </div>

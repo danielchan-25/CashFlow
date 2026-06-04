@@ -7,13 +7,13 @@ import { useTheme } from '../contexts/ThemeContext'
 const navItems = [
   { to: '/', label: '📝 记账', end: true },
   { to: '/transactions', label: '📊 概览' },
-  { to: '/accounts', label: '🏦 账户' },
-  { to: '/categories', label: '🏷️ 分类' },
 ]
 
 const moreItems = [
   { to: '/import', label: '📥 导入' },
   { to: '/export', label: '📤 导出' },
+  { to: '/accounts', label: '🏦 账户' },
+  { to: '/categories', label: '🏷️ 分类' },
 ]
 
 function Sidebar() {
@@ -117,6 +117,8 @@ function BottomTabBar() {
   const moreItems = [
     { to: '/import', label: '📥 导入' },
     { to: '/export', label: '📤 导出' },
+    { to: '/accounts', label: '🏦 账户' },
+    { to: '/categories', label: '🏷️ 分类' },
     { type: 'divider' },
     { type: 'theme', label: '🎨 主题' },
     { type: 'logout', label: '🚪 退出' },

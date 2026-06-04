@@ -35,14 +35,22 @@ async function handleMonth(c, db, month) {
     ORDER BY month ASC
   `).all()
 
-  const topCategories = await db.prepare(`
+  const expenseByCategory = await db.prepare(`
     SELECT c.id, c.name, c.icon, SUM(t.amount) as total, COUNT(*) as count
     FROM transactions t
     JOIN categories c ON t.category_id = c.id
     WHERE t.type = 'expense' AND t.date >= ? AND t.date <= ?
     GROUP BY c.id
     ORDER BY total DESC
-    LIMIT 10
+  `).bind(start, end).all()
+
+  const incomeByCategory = await db.prepare(`
+    SELECT c.id, c.name, c.icon, SUM(t.amount) as total, COUNT(*) as count
+    FROM transactions t
+    JOIN categories c ON t.category_id = c.id
+    WHERE t.type = 'income' AND t.date >= ? AND t.date <= ?
+    GROUP BY c.id
+    ORDER BY total DESC
   `).bind(start, end).all()
 
   return c.json({
@@ -51,7 +59,8 @@ async function handleMonth(c, db, month) {
     balance: summary.income - summary.expense,
     accounts: accounts.results,
     trend: trend.results,
-    topCategories: topCategories.results,
+    expenseByCategory: expenseByCategory.results,
+    incomeByCategory: incomeByCategory.results,
   })
 }
 
