@@ -82,8 +82,7 @@ export default function Categories() {
       await api.deleteCategory(id)
       loadCategories()
     } catch (err) {
-      const msg = await err.response?.json().catch(() => ({}))
-      if (msg.error === 'has_children') {
+      if (err.message === 'has_children') {
         alert('此分类下有子分类，请先删除子分类')
       } else {
         alert('删除失败：' + err.message)
