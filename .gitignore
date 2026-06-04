@@ -8,3 +8,7 @@ wrangler.local.toml
 *.local.*
 .DS_Store
 *.log
+*.csv
+scripts/*.js
+scripts/*.cjs
+scripts/*.mjs

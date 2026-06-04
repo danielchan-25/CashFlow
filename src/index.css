@@ -187,6 +187,109 @@ body {
   background: hsl(var(--muted-foreground) / 0.4);
 }
 
+/* === Receipt Styles === */
+.receipt-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 2px 16px hsl(var(--glass-shadow) / 0.06), 0 8px 32px hsl(var(--glass-shadow) / 0.04);
+  position: relative;
+}
+
+.receipt-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 12px;
+  right: 12px;
+  height: 3px;
+  background: repeating-linear-gradient(
+    90deg,
+    hsl(var(--border)) 0,
+    hsl(var(--border)) 6px,
+    transparent 6px,
+    transparent 10px
+  );
+}
+
+.receipt-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 12px;
+  right: 12px;
+  height: 3px;
+  background: repeating-linear-gradient(
+    90deg,
+    hsl(var(--border)) 0,
+    hsl(var(--border)) 6px,
+    transparent 6px,
+    transparent 10px
+  );
+}
+
+.receipt-dash {
+  height: 1px;
+  background: repeating-linear-gradient(
+    90deg,
+    hsl(var(--border)) 0,
+    hsl(var(--border)) 8px,
+    transparent 8px,
+    transparent 12px
+  );
+}
+
+.receipt-cut {
+  height: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    hsl(var(--muted-foreground) / 0.3) 0,
+    hsl(var(--muted-foreground) / 0.3) 6px,
+    transparent 6px,
+    transparent 10px
+  );
+}
+
+.receipt-amount-input {
+  -moz-appearance: textfield;
+}
+.receipt-amount-input::-webkit-outer-spin-button,
+.receipt-amount-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* === Receipt Toast === */
+.receipt-toast {
+  position: fixed;
+  bottom: 5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  animation: receiptPrint 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes receiptPrint {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(40px) scale(0.95);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes receiptFade {
+  from { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  to { opacity: 0; transform: translateX(-50%) translateY(-12px) scale(0.95); }
+}
+
+.receipt-toast-exit {
+  animation: receiptFade 0.3s ease-in forwards;
+}
+
 /* === Animations === */
 @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes slideInUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
