@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
 import { formatMoney } from '../lib/utils'
-import { Wallet, Plus, X, Landmark, CreditCard, PiggyBank, Building2 } from 'lucide-react'
+import { Wallet, Plus, X, Landmark, CreditCard, PiggyBank, Building2, Smartphone } from 'lucide-react'
 
-const typeIcons = { cash: Building2, bank: Landmark, credit: CreditCard, investment: PiggyBank }
-const typeLabels = { cash: '现金', bank: '银行卡', credit: '信用卡', investment: '投资' }
+const typeIcons = { cash: Building2, bank: Landmark, credit: CreditCard, investment: PiggyBank, ewallet: Smartphone }
+const typeLabels = { cash: '现金', bank: '银行卡', credit: '信用卡', investment: '投资', ewallet: '电子钱包' }
 
 export default function Accounts() {
   const [accounts, setAccounts] = useState([])
@@ -55,16 +55,17 @@ export default function Accounts() {
             placeholder="📝 账户名称" required
             className="w-full bg-muted rounded-lg px-3.5 py-2.5 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all" />
           <div className="flex gap-3">
-            <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-              className="flex-1 bg-muted rounded-lg px-3.5 py-2.5 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all">
-              <option value="cash">现金</option>
-              <option value="bank">银行卡</option>
-              <option value="credit">信用卡</option>
-              <option value="investment">投资</option>
-            </select>
-            <input value={form.balance} onChange={e => setForm(f => ({ ...f, balance: e.target.value }))}
-              type="number" step="0.01" placeholder="💰 初始余额"
-              className="flex-1 bg-muted rounded-lg px-3.5 py-2.5 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all" />
+              <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+                className="flex-1 bg-muted rounded-lg px-3.5 py-2.5 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all">
+                <option value="cash">💵 现金</option>
+                <option value="bank">🏦 银行卡</option>
+                <option value="ewallet">📱 电子钱包</option>
+                <option value="credit">💳 信用卡</option>
+                <option value="investment">📈 投资</option>
+              </select>
+              <input value={form.balance} onChange={e => setForm(f => ({ ...f, balance: e.target.value }))}
+                inputMode="decimal" placeholder="💰 初始余额"
+                className="flex-1 bg-muted rounded-lg px-3.5 py-2.5 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all" />
           </div>
           <button type="submit"
             className="w-full py-2.5 rounded-xl text-sm font-semibold text-primary-foreground bg-primary hover:brightness-110 transition-all active:scale-[0.97] shadow-sm">
