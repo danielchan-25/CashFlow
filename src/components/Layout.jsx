@@ -8,15 +8,15 @@ import {
 import { useTheme } from '../contexts/ThemeContext'
 
 const navItems = [
-  { to: '/', label: '概览', icon: LayoutDashboard, end: true },
-  { to: '/transactions', label: '流水', icon: ArrowRightLeft },
-  { to: '/accounts', label: '账户', icon: Wallet },
-  { to: '/categories', label: '分类', icon: Tags },
+  { to: '/', label: '📝 记账', icon: LayoutDashboard, end: true },
+  { to: '/transactions', label: '📊 概览', icon: ArrowRightLeft },
+  { to: '/accounts', label: '🏦 账户', icon: Wallet },
+  { to: '/categories', label: '🏷️ 分类', icon: Tags },
 ]
 
 const moreItems = [
-  { to: '/import', label: '导入', icon: Upload },
-  { to: '/export', label: '导出', icon: Download },
+  { to: '/import', label: '📥 导入', icon: Upload },
+  { to: '/export', label: '📤 导出', icon: Download },
 ]
 
 function Sidebar() {
@@ -129,11 +129,11 @@ function BottomTabBar() {
   }, [showMore])
 
   const moreItems = [
-    { to: '/import', label: '导入', icon: Upload },
-    { to: '/export', label: '导出', icon: Download },
+    { to: '/import', label: '📥 导入', icon: Upload },
+    { to: '/export', label: '📤 导出', icon: Download },
     { type: 'divider' },
-    { type: 'theme', label: '主题切换', icon: themeIcon[theme] },
-    { type: 'logout', label: '退出登录', icon: LogOut },
+    { type: 'theme', label: '🎨 主题', icon: themeIcon[theme] },
+    { type: 'logout', label: '🚪 退出', icon: LogOut },
   ]
 
   return (
