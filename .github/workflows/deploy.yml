@@ -26,4 +26,5 @@ jobs:
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: 1b77bda8ed1a2a6fb44abc0e2a6e189c
           command: pages deploy dist --project-name=cashflow --commit-dirty=true
