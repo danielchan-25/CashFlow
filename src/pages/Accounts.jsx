@@ -65,7 +65,7 @@ export default function Accounts() {
               </select>
               <input value={form.balance} onChange={e => setForm(f => ({ ...f, balance: e.target.value }))}
                 inputMode="decimal" placeholder="💰 初始余额"
-                className="flex-1 bg-muted rounded-lg px-3.5 py-2.5 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all" />
+                className="w-28 bg-muted rounded-lg px-3.5 py-2.5 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all" />
           </div>
           <button type="submit"
             className="w-full py-2.5 rounded-xl text-sm font-semibold text-primary-foreground bg-primary hover:brightness-110 transition-all active:scale-[0.97] shadow-sm">

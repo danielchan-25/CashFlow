@@ -1,17 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useSearchParams } from 'react-router-dom'
 import { api } from '../lib/api'
-import TransactionForm from '../components/TransactionForm'
 import TransactionList from '../components/TransactionList'
-import { ArrowRightLeft, Plus, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 
 export default function Transactions() {
-  const [searchParams, setSearchParams] = useSearchParams()
   const [transactions, setTransactions] = useState([])
   const [accounts, setAccounts] = useState([])
   const [loading, setLoading] = useState(true)
-  const [showForm, setShowForm] = useState(searchParams.get('add') === 'true')
-  const [editing, setEditing] = useState(null)
   const [filters, setFilters] = useState({ type: '', account_id: '', search: '', page: 1 })
   const [total, setTotal] = useState(0)
 
@@ -27,19 +22,6 @@ export default function Transactions() {
 
   useEffect(() => { loadData().finally(() => setLoading(false)) }, [loadData])
 
-  useEffect(() => {
-    if (searchParams.get('add') === 'true') {
-      setShowForm(true)
-      setSearchParams({}, { replace: true })
-    }
-  }, [searchParams, setSearchParams])
-
-  function handleDone() {
-    setShowForm(false)
-    setEditing(null)
-    loadData()
-  }
-
   async function handleDelete(id) {
     if (!confirm('确定删除这笔记录？')) return
     await api.deleteTransaction(id)
@@ -50,27 +32,12 @@ export default function Transactions() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-4">
-      <div className="flex items-center justify-between animate-in slide-up fill-both">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-            <ArrowRightLeft size={18} className="text-primary" />
-          </div>
-          <h1 className="text-lg font-bold">💳 交易流水</h1>
+      <div className="flex items-center gap-3 animate-in slide-up fill-both">
+        <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+          <Search size={18} className="text-primary" />
         </div>
-        <button
-          onClick={() => { setEditing(null); setShowForm(!showForm) }}
-          className="px-4 py-2 rounded-xl text-sm font-semibold text-primary-foreground bg-primary hover:brightness-110 transition-all active:scale-[0.97] shadow-sm flex items-center gap-1.5">
-          <Plus size={14} />
-          {showForm ? '收起' : '✏️ 记一笔'}
-        </button>
+        <h1 className="text-lg font-bold">📊 概览</h1>
       </div>
-
-      {showForm && (
-        <TransactionForm
-          onDone={handleDone}
-          initial={editing}
-        />
-      )}
 
       <div className="glass-card-flat rounded-2xl p-3 flex flex-wrap gap-2 items-center">
         <select value={filters.type} onChange={e => setFilters(f => ({ ...f, type: e.target.value, page: 1 }))}
@@ -94,7 +61,6 @@ export default function Transactions() {
 
       <TransactionList
         transactions={transactions}
-        onEdit={(t) => { setEditing(t); setShowForm(true) }}
         onDelete={handleDelete}
         loading={loading}
       />

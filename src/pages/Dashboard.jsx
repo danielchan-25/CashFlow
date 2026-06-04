@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
-import { today } from '../lib/utils'
+import { today, formatMoney } from '../lib/utils'
 import ReceiptToast from '../components/ReceiptToast'
 
 const inputClass = 'w-full bg-muted rounded-xl px-4 py-3 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all duration-200'
@@ -26,10 +26,18 @@ export default function Dashboard() {
   const [catLevel1, setCatLevel1] = useState('')
   const [catLevel2, setCatLevel2] = useState('')
   const [toast, setToast] = useState(null)
+  const [todayTxs, setTodayTxs] = useState([])
+
+  async function loadTodayTxs() {
+    const todayStr = today()
+    const res = await api.getTransactions({ start: todayStr, end: todayStr, limit: 50 })
+    setTodayTxs(res.data || [])
+  }
 
   useEffect(() => {
     api.getAccounts().then(r => setAccounts(r.data))
     api.getCategories().then(r => setCategories(r.data))
+    loadTodayTxs()
   }, [])
 
   const { map, roots } = buildTree(categories)
@@ -83,6 +91,7 @@ export default function Dashboard() {
     setForm({ type: form.type, amount: '', account_id: '', category_id: '', date: today(), note: '' })
     setCatLevel1('')
     setCatLevel2('')
+    loadTodayTxs()
     setTimeout(() => setToast(null), 2600)
   }
 
@@ -158,6 +167,25 @@ export default function Dashboard() {
           ✅ 记录
         </button>
       </form>
+
+      {todayTxs.length > 0 && (
+        <div className="mt-6 space-y-2 animate-in slide-up fill-both">
+          <h2 className="text-sm font-semibold">📋 今日记录</h2>
+          <div className="glass-card-flat rounded-2xl divide-y divide-border/40">
+            {todayTxs.map((tx) => (
+              <div key={tx.id} className="flex items-center justify-between px-4 py-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-sm truncate">{tx.category_icon} {tx.category_name}</span>
+                  {tx.note && <span className="text-xs text-muted-foreground truncate hidden sm:inline">— {tx.note}</span>}
+                </div>
+                <span className={`text-sm font-bold tabular-nums shrink-0 ml-3 ${tx.type === 'expense' ? 'text-red-500' : 'text-emerald-500'}`}>
+                  {tx.type === 'expense' ? '-' : '+'}¥{formatMoney(Math.abs(tx.amount))}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {toast && <ReceiptToast {...toast} onClose={() => setToast(null)} />}
     </div>

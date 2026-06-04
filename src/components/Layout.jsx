@@ -1,22 +1,19 @@
 import { useState, useRef, useEffect } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import {
-  LayoutDashboard, ArrowRightLeft, Wallet,
-  Tags, Upload, Download, LogOut, Sun, Moon, Monitor, MoreHorizontal,
-} from 'lucide-react'
+import { LogOut, Sun, Moon, Monitor } from 'lucide-react'
 import { useTheme } from '../contexts/ThemeContext'
 
 const navItems = [
-  { to: '/', label: '📝 记账', icon: LayoutDashboard, end: true },
-  { to: '/transactions', label: '📊 概览', icon: ArrowRightLeft },
-  { to: '/accounts', label: '🏦 账户', icon: Wallet },
-  { to: '/categories', label: '🏷️ 分类', icon: Tags },
+  { to: '/', label: '📝 记账', end: true },
+  { to: '/transactions', label: '📊 概览' },
+  { to: '/accounts', label: '🏦 账户' },
+  { to: '/categories', label: '🏷️ 分类' },
 ]
 
 const moreItems = [
-  { to: '/import', label: '📥 导入', icon: Upload },
-  { to: '/export', label: '📤 导出', icon: Download },
+  { to: '/import', label: '📥 导入' },
+  { to: '/export', label: '📤 导出' },
 ]
 
 function Sidebar() {
@@ -42,16 +39,11 @@ function Sidebar() {
       </div>
 
       <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
-        {navItems.map(({ to, label, icon: Icon, end }) => (
+        {navItems.map(({ to, label, end }) => (
           <NavLink key={to} to={to} end={end}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group">
             {({ isActive }) => (
               <>
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${
-                  isActive ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground group-hover:text-foreground bg-transparent group-hover:bg-accent'
-                }`}>
-                  <Icon size={16} />
-                </div>
                 <span className={`transition-colors duration-200 ${isActive ? 'text-foreground font-semibold' : 'text-muted-foreground group-hover:text-foreground'}`}>
                   {label}
                 </span>
@@ -63,16 +55,11 @@ function Sidebar() {
           </NavLink>
         ))}
         <div className="border-t border-border/40 my-2" />
-        {moreItems.map(({ to, label, icon: Icon }) => (
+        {moreItems.map(({ to, label }) => (
           <NavLink key={to} to={to}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group">
             {({ isActive }) => (
               <>
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${
-                  isActive ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground group-hover:text-foreground bg-transparent group-hover:bg-accent'
-                }`}>
-                  <Icon size={16} />
-                </div>
                 <span className={`transition-colors duration-200 ${isActive ? 'text-foreground font-semibold' : 'text-muted-foreground group-hover:text-foreground'}`}>
                   {label}
                 </span>
@@ -114,7 +101,6 @@ function BottomTabBar() {
   const moreRef = useRef(null)
 
   const nextTheme = { light: 'dark', dark: 'system', system: 'light' }
-  const themeIcon = { light: <Sun size={16} />, dark: <Moon size={16} />, system: <Monitor size={16} /> }
 
   useEffect(() => {
     function handleClick(e) {
@@ -129,11 +115,11 @@ function BottomTabBar() {
   }, [showMore])
 
   const moreItems = [
-    { to: '/import', label: '📥 导入', icon: Upload },
-    { to: '/export', label: '📤 导出', icon: Download },
+    { to: '/import', label: '📥 导入' },
+    { to: '/export', label: '📤 导出' },
     { type: 'divider' },
-    { type: 'theme', label: '🎨 主题', icon: themeIcon[theme] },
-    { type: 'logout', label: '🚪 退出', icon: LogOut },
+    { type: 'theme', label: '🎨 主题' },
+    { type: 'logout', label: '🚪 退出' },
   ]
 
   return (
@@ -151,9 +137,6 @@ function BottomTabBar() {
                   return (
                     <button key={i} onClick={() => { setTheme(nextTheme[theme]); setShowMore(false) }}
                       className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-foreground hover:bg-accent/50 transition-all duration-200 active:scale-[0.98]">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground">
-                        {item.icon}
-                      </div>
                       <span>{item.label}</span>
                       <span className="ml-auto text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                         {theme === 'light' ? '浅色' : theme === 'dark' ? '深色' : '跟随系统'}
@@ -165,9 +148,6 @@ function BottomTabBar() {
                   return (
                     <button key={i} onClick={() => { logout(); setShowMore(false) }}
                       className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition-all duration-200 active:scale-[0.98]">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center">
-                        <item.icon size={16} />
-                      </div>
                       <span>{item.label}</span>
                     </button>
                   )
@@ -175,9 +155,6 @@ function BottomTabBar() {
                 return (
                   <NavLink key={item.to} to={item.to} onClick={() => setShowMore(false)}
                     className="flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-foreground hover:bg-accent/50 transition-all duration-200 active:scale-[0.98]">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground">
-                      <item.icon size={16} />
-                    </div>
                     <span>{item.label}</span>
                   </NavLink>
                 )
@@ -187,16 +164,12 @@ function BottomTabBar() {
         </>
       )}
       <div className="max-w-lg mx-auto flex items-center justify-around h-16 px-2">
-        {navItems.map(({ to, label, icon: Icon, end }) => (
+        {navItems.map(({ to, label, end }) => (
           <NavLink key={to} to={to} end={end}
             className="flex flex-col items-center gap-0.5 relative py-1 group min-w-0 flex-1">
             {({ isActive }) => (
               <>
-                <div className="w-10 h-7 rounded-lg flex items-center justify-center transition-all duration-300">
-                  <Icon size={isActive ? 20 : 18}
-                    className={`transition-all duration-300 ${isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
-                </div>
-                <span className={`text-[10px] font-medium transition-colors duration-300 ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>
+                <span className={`text-[11px] font-medium transition-colors duration-300 ${isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`}>
                   {label}
                 </span>
                 {isActive && (
@@ -208,11 +181,8 @@ function BottomTabBar() {
         ))}
         <button onClick={() => setShowMore(v => !v)}
           className="flex flex-col items-center gap-0.5 relative py-1 group min-w-0 flex-1">
-          <div className="w-10 h-7 rounded-lg flex items-center justify-center transition-all duration-300 text-muted-foreground group-hover:text-foreground">
-            <MoreHorizontal size={showMore ? 20 : 18} className={`transition-all duration-300 ${showMore ? 'text-primary' : ''}`} />
-          </div>
-          <span className={`text-[10px] font-medium transition-colors duration-300 ${showMore ? 'text-primary' : 'text-muted-foreground'}`}>
-            更多
+          <span className={`text-[11px] font-medium transition-colors duration-300 ${showMore ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`}>
+            ⚙️ 更多
           </span>
           {showMore && (
             <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full bg-primary animate-in fade-in" />
