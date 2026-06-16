@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
+import { today } from '../lib/utils'
 import { ArrowUpFromLine, ArrowDownToLine } from 'lucide-react'
 
 function buildTree(categories) {
@@ -7,9 +8,9 @@ function buildTree(categories) {
   const roots = []
   categories.forEach(c => { map[c.id] = { ...c, children: [] } })
   categories.forEach(c => {
-    if (c.parent_id && map[c.parent_id]) {
+    if (c.parent_id != null && c.parent_id !== '' && map[c.parent_id]) {
       map[c.parent_id].children.push(map[c.id])
-    } else if (!c.parent_id) {
+    } else if (c.parent_id == null || c.parent_id === '') {
       roots.push(map[c.id])
     }
   })
@@ -22,17 +23,18 @@ export default function TransactionForm({ onDone, initial }) {
   const [catLevel1, setCatLevel1] = useState('')
   const [catLevel2, setCatLevel2] = useState('')
   const [form, setForm] = useState(initial || {
-    date: new Date().toISOString().slice(0, 7) + '-01',
+    date: today(),
     type: 'expense',
     amount: '',
     account_id: '',
     category_id: '',
     note: '',
   })
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    api.getAccounts().then(r => setAccounts(r.data))
-    api.getCategories().then(r => setCategories(r.data))
+    api.getAccounts().then(r => setAccounts(r.data)).catch(err => console.error('加载账户失败', err))
+    api.getCategories().then(r => setCategories(r.data)).catch(err => console.error('加载分类失败', err))
   }, [])
 
   useEffect(() => {
@@ -78,13 +80,21 @@ export default function TransactionForm({ onDone, initial }) {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!form.amount || !form.account_id) return
-    if (initial?.id) {
-      await api.updateTransaction(initial.id, form)
-    } else {
-      await api.createTransaction(form)
+    if (!form.amount || !form.account_id || !form.category_id) return
+    setSubmitting(true)
+    try {
+      const payload = { account_id: form.account_id, category_id: form.category_id, amount: form.amount, type: form.type, date: form.date, note: form.note }
+      if (initial?.id) {
+        await api.updateTransaction(initial.id, payload)
+      } else {
+        await api.createTransaction(payload)
+      }
+      onDone?.()
+    } catch (err) {
+      alert('操作失败：' + err.message)
+    } finally {
+      setSubmitting(false)
     }
-    onDone?.()
   }
 
   const inputClass = 'w-full bg-muted rounded-lg px-3.5 py-2.5 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all duration-200'
@@ -146,9 +156,9 @@ export default function TransactionForm({ onDone, initial }) {
             取消
           </button>
         )}
-        <button type="submit"
-          className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-primary-foreground bg-primary hover:brightness-110 transition-all active:scale-[0.97] shadow-sm">
-          {initial?.id ? '✅ 更新' : '✅ 添加'}
+        <button type="submit" disabled={submitting}
+          className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-primary-foreground bg-primary hover:brightness-110 transition-all active:scale-[0.97] shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+          {submitting ? '⏳ 处理中...' : initial?.id ? '✅ 更新' : '✅ 添加'}
         </button>
       </div>
     </form>

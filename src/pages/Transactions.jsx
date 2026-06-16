@@ -20,7 +20,10 @@ function buildCategoryMap(categories) {
 
 function findRoot(catId, catMap) {
   let current = catMap[catId]
-  while (current && current.parent_id && catMap[current.parent_id]) {
+  const visited = new Set()
+  while (current && current.parent_id != null && current.parent_id !== '' && catMap[current.parent_id]) {
+    if (visited.has(current.id)) break
+    visited.add(current.id)
     current = catMap[current.parent_id]
   }
   return current
@@ -69,28 +72,36 @@ export default function Transactions() {
   const [editing, setEditing] = useState(null)
 
   const loadData = useCallback(async () => {
-    const [txRes, accRes] = await Promise.all([
-      api.getTransactions(filters),
-      api.getAccounts(),
-    ])
-    setTransactions(txRes.data)
-    setTotal(txRes.total)
-    setAccounts(accRes.data)
+    try {
+      const [txRes, accRes] = await Promise.all([
+        api.getTransactions(filters),
+        api.getAccounts(),
+      ])
+      setTransactions(txRes.data)
+      setTotal(txRes.total)
+      setAccounts(accRes.data)
+    } catch (err) {
+      console.error('加载交易失败', err)
+    }
   }, [filters])
 
   useEffect(() => {
     loadData().finally(() => setLoading(false))
-    api.getCategories().then(r => setCategories(r.data))
+    api.getCategories().then(r => setCategories(r.data)).catch(err => console.error('加载分类失败', err))
   }, [loadData])
 
   useEffect(() => {
-    api.getSummary(month).then(r => setSummary(r))
+    api.getSummary(month).then(r => setSummary(r)).catch(err => console.error('加载统计失败', err))
   }, [month])
 
   async function handleDelete(id) {
     if (!confirm('确定删除这笔记录？')) return
-    await api.deleteTransaction(id)
-    loadData()
+    try {
+      await api.deleteTransaction(id)
+      loadData()
+    } catch (err) {
+      alert('删除失败：' + err.message)
+    }
   }
 
   function handleEdit(tx) {
@@ -100,7 +111,7 @@ export default function Transactions() {
   function handleEditDone() {
     setEditing(null)
     loadData()
-    api.getSummary(month).then(r => setSummary(r))
+    api.getSummary(month).then(r => setSummary(r)).catch(err => console.error('刷新统计失败', err))
   }
 
   const catMap = buildCategoryMap(categories)
@@ -109,7 +120,7 @@ export default function Transactions() {
   const catChildren = {}
   const roots = []
   filteredCats.forEach(c => {
-    if (c.parent_id) {
+    if (c.parent_id != null && c.parent_id !== '') {
       if (!catChildren[c.parent_id]) catChildren[c.parent_id] = []
       catChildren[c.parent_id].push(c)
     } else {

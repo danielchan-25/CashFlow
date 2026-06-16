@@ -15,8 +15,12 @@ export default function Categories() {
   useEffect(() => { loadCategories() }, [])
 
   async function loadCategories() {
-    const res = await api.getCategories()
-    setCategories(res.data)
+    try {
+      const res = await api.getCategories()
+      setCategories(res.data)
+    } catch (err) {
+      console.error('加载分类失败', err)
+    }
   }
 
   function buildTree(type) {
@@ -24,9 +28,9 @@ export default function Categories() {
     const roots = []
     categories.filter(c => c.type === type).forEach(c => { map[c.id] = { ...c, children: [] } })
     categories.filter(c => c.type === type).forEach(c => {
-      if (c.parent_id && map[c.parent_id]) {
+      if (c.parent_id != null && c.parent_id !== '' && map[c.parent_id]) {
         map[c.parent_id].children.push(map[c.id])
-      } else if (!c.parent_id) {
+      } else if (c.parent_id == null || c.parent_id === '') {
         roots.push(map[c.id])
       }
     })
@@ -34,6 +38,7 @@ export default function Categories() {
   }
 
   function flattenTree(nodes, depth = 0) {
+    if (depth > 10) return []
     const result = []
     for (const node of nodes) {
       result.push({ id: node.id, name: node.name, icon: node.icon, depth })
@@ -43,6 +48,7 @@ export default function Categories() {
   }
 
   function renderTree(nodes, depth = 0) {
+    if (depth > 10) return <p className="text-xs text-muted-foreground py-2">⚠️ 分类层级过深</p>
     return nodes.map(node => (
       <div key={node.id}>
         <div
@@ -76,12 +82,17 @@ export default function Categories() {
   async function handleSubmit(e) {
     e.preventDefault()
     if (!form.name) return
-    await api.createCategory({
-      name: form.name,
-      icon: form.icon || '📦',
-      type: form.type,
-      parent_id: form.parent_id || null,
-    })
+    try {
+      await api.createCategory({
+        name: form.name,
+        icon: form.icon || '📦',
+        type: form.type,
+        parent_id: form.parent_id || null,
+      })
+    } catch (err) {
+      alert('创建失败：' + err.message)
+      return
+    }
     setForm({ name: '', icon: '📦', type: 'expense', parent_id: '' })
     setShowForm(false)
     loadCategories()
@@ -94,6 +105,8 @@ export default function Categories() {
     } catch (err) {
       if (err.message === 'has_children') {
         alert('此分类下有子分类，请先删除子分类')
+      } else if (err.message === 'has_transactions') {
+        alert('此分类下有交易记录，无法删除')
       } else {
         alert('删除失败：' + err.message)
       }

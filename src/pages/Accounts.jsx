@@ -14,8 +14,12 @@ export default function Accounts() {
   useEffect(() => { loadAccounts() }, [])
 
   async function loadAccounts() {
-    const res = await api.getAccounts()
-    setAccounts(res.data)
+    try {
+      const res = await api.getAccounts()
+      setAccounts(res.data)
+    } catch (err) {
+      console.error('加载账户失败', err)
+    }
   }
 
   function startEdit(account) {
@@ -33,10 +37,15 @@ export default function Accounts() {
   async function handleSubmit(e) {
     e.preventDefault()
     if (!form.name) return
-    if (editing) {
-      await api.updateAccount(editing.id, { name: form.name, type: form.type, balance: Number(form.balance) || 0 })
-    } else {
-      await api.createAccount({ name: form.name, type: form.type, balance: Number(form.balance) || 0 })
+    try {
+      if (editing) {
+        await api.updateAccount(editing.id, { name: form.name, type: form.type, balance: Math.round(Number(form.balance) * 100) / 100 || 0 })
+      } else {
+        await api.createAccount({ name: form.name, type: form.type, balance: Math.round(Number(form.balance) * 100) / 100 || 0 })
+      }
+    } catch (err) {
+      alert('操作失败：' + err.message)
+      return
     }
     setEditing(null)
     setForm({ name: '', type: 'cash', balance: '' })
@@ -46,8 +55,12 @@ export default function Accounts() {
 
   async function handleDelete(id) {
     if (!confirm('删除后不可恢复，确定删除？')) return
-    await api.deleteAccount(id)
-    loadAccounts()
+    try {
+      await api.deleteAccount(id)
+      loadAccounts()
+    } catch (e) {
+      alert(e.message)
+    }
   }
 
   return (

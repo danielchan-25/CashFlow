@@ -10,9 +10,16 @@ export async function handleSummary(c) {
   return daily ? handleDaily(c, db, month) : handleMonth(c, db, month)
 }
 
+function monthEnd(month) {
+  const d = new Date(month + '-01')
+  d.setMonth(d.getMonth() + 1)
+  d.setDate(0)
+  return d.toISOString().slice(0, 10)
+}
+
 async function handleMonth(c, db, month) {
   const start = `${month}-01`
-  const end = `${month}-31`
+  const end = monthEnd(month)
 
   const summary = await db.prepare(`
     SELECT
@@ -66,7 +73,7 @@ async function handleMonth(c, db, month) {
 
 async function handleDaily(c, db, month) {
   const start = `${month}-01`
-  const end = `${month}-31`
+  const end = monthEnd(month)
 
   const rows = await db.prepare(`
     SELECT date,

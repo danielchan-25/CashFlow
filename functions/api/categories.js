@@ -29,6 +29,10 @@ export async function handleCategories(c) {
     if (children.cnt > 0) {
       return c.json({ error: 'has_children', message: '请先删除子分类' }, 400)
     }
+    const txnCount = await db.prepare('SELECT COUNT(*) as cnt FROM transactions WHERE category_id = ?').bind(Number(id)).first()
+    if (txnCount.cnt > 0) {
+      return c.json({ error: 'has_transactions', message: '此分类下有交易记录，无法删除' }, 400)
+    }
     await db.prepare('DELETE FROM categories WHERE id = ?').bind(Number(id)).run()
     return c.json({ success: true })
   }

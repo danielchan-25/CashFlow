@@ -15,7 +15,10 @@ export async function handleTransactions(c) {
     if (category_id) {
       const allCats = await db.prepare('SELECT id, parent_id FROM categories').all()
       const ids = [Number(category_id)]
+      const visited = new Set()
       function collect(id) {
+        if (visited.has(id) || ids.length > 100) return
+        visited.add(id)
         for (const c of allCats.results) {
           if (c.parent_id === id) {
             ids.push(c.id)
@@ -29,7 +32,7 @@ export async function handleTransactions(c) {
     }
     if (start) { where.push('t.date >= ?'); params.push(start) }
     if (end) { where.push('t.date <= ?'); params.push(end) }
-    if (search) { where.push('t.note LIKE ?'); params.push(`%${search}%`) }
+    if (search) { where.push("t.note LIKE ? ESCAPE '\\'"); params.push(`%${search.replace(/[%_]/g, '\\$&')}%`) }
 
     const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : ''
 
@@ -63,11 +66,21 @@ export async function handleTransactions(c) {
   }
 
   if (method === 'PUT') {
+    const old = await db.prepare('SELECT * FROM transactions WHERE id = ?').bind(Number(id)).first()
+    if (!old) return c.json({ error: 'not found' }, 404)
+
     const body = await c.req.json()
     const { account_id, category_id, amount, type, date, note } = body
+
+    const reverseSign = old.type === 'income' ? '-' : '+'
+    await db.prepare(`UPDATE accounts SET balance = balance ${reverseSign} ? WHERE id = ?`).bind(old.amount, old.account_id).run()
+
+    const applySign = type === 'income' ? '+' : '-'
+    await db.prepare(`UPDATE accounts SET balance = balance ${applySign} ? WHERE id = ?`).bind(amount, account_id).run()
+
     await db.prepare(
       'UPDATE transactions SET account_id=?, category_id=?, amount=?, type=?, date=?, note=? WHERE id=?'
-    ).bind(account_id, category_id, amount, type, date, note, Number(id)).run()
+    ).bind(account_id, category_id || null, amount, type, date, note, Number(id)).run()
     return c.json({ success: true })
   }
 

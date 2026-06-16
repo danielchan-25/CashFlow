@@ -10,9 +10,9 @@ function buildTree(categories) {
   const roots = []
   categories.forEach(c => { map[c.id] = { ...c, children: [] } })
   categories.forEach(c => {
-    if (c.parent_id && map[c.parent_id]) {
+    if (c.parent_id != null && c.parent_id !== '' && map[c.parent_id]) {
       map[c.parent_id].children.push(map[c.id])
-    } else if (!c.parent_id) {
+    } else if (c.parent_id == null || c.parent_id === '') {
       roots.push(map[c.id])
     }
   })
@@ -27,16 +27,21 @@ export default function Dashboard() {
   const [catLevel2, setCatLevel2] = useState('')
   const [toast, setToast] = useState(null)
   const [todayTxs, setTodayTxs] = useState([])
+  const [submitting, setSubmitting] = useState(false)
 
   async function loadTodayTxs() {
-    const todayStr = today()
-    const res = await api.getTransactions({ start: todayStr, end: todayStr, limit: 50 })
-    setTodayTxs(res.data || [])
+    try {
+      const todayStr = today()
+      const res = await api.getTransactions({ start: todayStr, end: todayStr, limit: 50 })
+      setTodayTxs(res.data || [])
+    } catch (err) {
+      console.error('加载今日记录失败', err)
+    }
   }
 
   useEffect(() => {
-    api.getAccounts().then(r => setAccounts(r.data))
-    api.getCategories().then(r => setCategories(r.data))
+    api.getAccounts().then(r => setAccounts(r.data)).catch(err => console.error('加载账户失败', err))
+    api.getCategories().then(r => setCategories(r.data)).catch(err => console.error('加载分类失败', err))
     loadTodayTxs()
   }, [])
 
@@ -78,21 +83,28 @@ export default function Dashboard() {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!form.amount || !form.account_id || !form.category_id) return
-    await api.createTransaction(form)
-    const catName = categories.find(c => c.id === Number(form.category_id))?.name || ''
-    const accName = accounts.find(a => a.id === Number(form.account_id))?.name || ''
-    setToast({
-      amount: Math.abs(Number(form.amount)),
-      type: form.type,
-      category: catName,
-      account: accName,
-    })
-    setForm({ type: form.type, amount: '', account_id: '', category_id: '', date: today(), note: '' })
-    setCatLevel1('')
-    setCatLevel2('')
-    loadTodayTxs()
-    setTimeout(() => setToast(null), 2600)
+    if (!form.amount || !form.account_id || !form.category_id || submitting) return
+    setSubmitting(true)
+    try {
+      await api.createTransaction(form)
+      const catName = categories.find(c => c.id === Number(form.category_id))?.name || ''
+      const accName = accounts.find(a => a.id === Number(form.account_id))?.name || ''
+      setToast({
+        amount: Math.abs(Number(form.amount)),
+        type: form.type,
+        category: catName,
+        account: accName,
+      })
+      setForm({ type: form.type, amount: '', account_id: '', category_id: '', date: today(), note: '' })
+      setCatLevel1('')
+      setCatLevel2('')
+      loadTodayTxs()
+      setTimeout(() => setToast(null), 2600)
+    } catch (err) {
+      alert('记录失败：' + err.message)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -162,7 +174,7 @@ export default function Dashboard() {
 
         <div className="receipt-cut" />
 
-        <button type="submit" disabled={!form.amount || !form.account_id || !form.category_id}
+        <button type="submit" disabled={!form.amount || !form.account_id || !form.category_id || submitting}
           className="w-full py-3 rounded-xl text-sm font-semibold text-primary-foreground bg-primary hover:brightness-110 transition-all active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-sm">
           ✅ 记录
         </button>
