@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
-import { Tags, Plus, X, ChevronDown, ChevronRight } from 'lucide-react'
+import { categoriesData } from '../data/categories'
+import { Tags, Plus, X, ChevronDown, ChevronRight, Upload } from 'lucide-react'
 
 const expenseEmojis = ['🍱','🚗','🏠','👕','📱','💊','🎮','📚','✈️','🎁','💄','🏋️','🐱','💼','🛒','🍜','☕','🎬','🎵','🐾','🍪','🍻','🧴','🚌','🚘','🏢','💡','🔑','🛋️','🏨','🎯','📋','📞','☁️','🎤','🖨️','🏥','💆','🧧','🏡','🎓','📖','🏕️','🔒','🌸','🐶','🔗','💉','🩺','💇','🍽️','🥡','🍳','🚇','🚄','🚕','⛽','🅿️','🔧','🛣️','🎫','🤖','🍎','🌐','🖥️','🍖','🪣','🛏️','🔒']
 const incomeEmojis = ['💰','💳','🏦','💵','💶','💷','💸','💎','👑','🧧','📈','🏢','💼','🎯','⭐','🔄','🏪','🛍️','🎉','🏆']
@@ -99,6 +100,28 @@ export default function Categories() {
     }
   }
 
+  async function handleImport() {
+    if (!confirm('将清空所有分类和交易记录，从 categories.json 重新导入，确定？')) return
+    try {
+      const headers = { 'Content-Type': 'application/json' }
+      const pw = localStorage.getItem('cashflow_password')
+      if (pw) headers['Authorization'] = 'Bearer ' + pw
+      const res = await fetch('/api/categories/import', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(categoriesData),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || '导入失败')
+      }
+      loadCategories()
+      alert('✅ 导入成功')
+    } catch (err) {
+      alert('导入失败：' + err.message)
+    }
+  }
+
   return (
     <div className="max-w-2xl mx-auto space-y-4">
       <div className="flex items-center justify-between animate-in slide-up fill-both">
@@ -108,11 +131,18 @@ export default function Categories() {
           </div>
           <h1 className="text-lg font-bold">🏷️ 分类管理</h1>
         </div>
-        <button onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 rounded-xl text-sm font-semibold text-primary-foreground bg-primary hover:brightness-110 transition-all active:scale-[0.97] shadow-sm flex items-center gap-1.5">
-          <Plus size={14} />
-          {showForm ? '取消' : '➕ 添加'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={handleImport}
+            className="px-4 py-2 rounded-xl text-sm font-semibold bg-muted text-muted-foreground hover:bg-accent transition-all active:scale-[0.97] flex items-center gap-1.5">
+            <Upload size={14} />
+            🔄 重新导入
+          </button>
+          <button onClick={() => setShowForm(!showForm)}
+            className="px-4 py-2 rounded-xl text-sm font-semibold text-primary-foreground bg-primary hover:brightness-110 transition-all active:scale-[0.97] shadow-sm flex items-center gap-1.5">
+            <Plus size={14} />
+            {showForm ? '取消' : '➕ 添加'}
+          </button>
+        </div>
       </div>
 
       {showForm && (

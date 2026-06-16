@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import { handleTransactions } from './api/transactions'
 import { handleAccounts } from './api/accounts'
 import { handleCategories } from './api/categories'
+import { handleCategoriesImport } from './api/categories/import'
 import { handleSummary } from './api/summary'
 import { handleExport } from './api/transactions/export'
 import { handleImport } from './api/transactions/import'
@@ -37,6 +38,7 @@ app.get('/api/categories', handleCategories)
 app.post('/api/categories', handleCategories)
 app.put('/api/categories/:id', handleCategories)
 app.delete('/api/categories/:id', handleCategories)
+app.post('/api/categories/import', handleCategoriesImport)
 
 app.all('/*', async (c) => {
   const env = c.env
