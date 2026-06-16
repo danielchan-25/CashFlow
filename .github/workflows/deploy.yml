@@ -1,6 +1,7 @@
 name: Deploy to Cloudflare Pages
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
 
@@ -16,11 +17,15 @@ jobs:
           cache: npm
 
       - run: npm ci
+      - name: Configure Wrangler
+        run: |
+          sed -i "s/YOUR_D1_DATABASE_ID/${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}/g" wrangler.toml
+
       - run: npm run build
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: 1b77bda8ed1a2a6fb44abc0e2a6e189c
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy dist --project-name=cashflow --commit-dirty=true

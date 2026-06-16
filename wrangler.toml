@@ -6,7 +6,8 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "cashflow"
 database_name = "cashflow"
-database_id = "89694fbf-dbb5-4253-84a5-d6b6c53af612"
+database_id = "YOUR_D1_DATABASE_ID"
+
 
 
 
