@@ -9,7 +9,9 @@
     "build": "vite build && npm run build:worker",
     "build:worker": "esbuild functions/_worker.js --bundle --outfile=dist/_worker.js --format=esm --platform=browser --external:__STATIC_CONTENT_MANIFEST",
     "preview": "vite preview",
-    "db:migrate": "wrangler d1 execute cashflow --file=migrations/001_init.sql --local"
+    "db:migrate": "wrangler d1 execute cashflow --file=migrations/001_init.sql --local",
+    "db:migrate:remote": "wrangler d1 execute cashflow --file=migrations/001_init.sql --remote",
+    "check:encoding": "node tools/check-encoding.cjs"
   },
   "dependencies": {
     "hono": "^4.7.0",

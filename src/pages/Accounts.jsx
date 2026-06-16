@@ -59,7 +59,11 @@ export default function Accounts() {
       await api.deleteAccount(id)
       loadAccounts()
     } catch (e) {
-      alert(e.message)
+      if (e.message === 'has_transactions') {
+        alert('此账户下有交易记录，无法删除')
+      } else {
+        alert(e.message)
+      }
     }
   }
 

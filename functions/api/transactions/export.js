@@ -19,7 +19,7 @@ export async function handleExport(c) {
 
   const header = '日期,类型,金额,账户,分类,图标,备注\n'
   const csv = header + rows.results.map(r =>
-    `${r.date},${r.type},${r.amount},${r.account || ''},${r.category || ''},${r.icon || ''},${(r.note || '').replace(/,/g, '，')}`
+    [r.date, r.type, r.amount, r.account || '', r.category || '', r.icon || '', r.note || ''].map(csvCell).join(',')
   ).join('\n')
 
   return new Response(csv, {
@@ -28,4 +28,10 @@ export async function handleExport(c) {
       'Content-Disposition': `attachment; filename="cashflow_${start || 'all'}_${end || 'all'}.csv"`,
     },
   })
+}
+
+function csvCell(value) {
+  const text = String(value ?? '')
+  if (!/[",\r\n]/.test(text)) return text
+  return `"${text.replace(/"/g, '""')}"`
 }

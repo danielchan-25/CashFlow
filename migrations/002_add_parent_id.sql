@@ -1,1 +1,2 @@
-ALTER TABLE categories ADD COLUMN parent_id INTEGER REFERENCES categories(id);
+-- No-op migration kept for environments that may already have recorded this file.
+-- The current initial schema creates categories.parent_id directly.
