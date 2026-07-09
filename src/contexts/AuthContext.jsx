@@ -14,7 +14,7 @@ export function AuthProvider({ children }) {
         setHasPassword(res.hasPassword)
         if (!res.hasPassword) setAuthenticated(true)
       })
-      .catch(() => {})
+      .catch(() => { setAuthenticated(true) })
       .finally(() => setLoading(false))
   }, [])
 
