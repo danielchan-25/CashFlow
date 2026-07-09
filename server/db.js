@@ -2,9 +2,6 @@ import { DatabaseSync } from 'node:sqlite'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import crypto from 'crypto'
-import { getCategoryIcon } from '../src/data/categoryIcons.js'
-import { categoriesData } from '../src/data/categories.js'
-
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const DB_PATH = join(__dirname, '..', 'cashflow.sqlite')
 
@@ -54,43 +51,6 @@ function initSchema() {
   db.exec('UPDATE transactions SET account_id = NULL')
   db.exec('DROP TABLE IF EXISTS accounts')
   db.exec('PRAGMA foreign_keys = ON')
-
-  const row = db.prepare('SELECT COUNT(*) as cnt FROM categories').get()
-  if (row.cnt === 0) seed()
-}
-
-function seed() {
-  const insertCat = db.prepare(
-    'INSERT INTO categories (name, icon, type, parent_id, sort_order) VALUES (?, ?, ?, ?, ?)'
-  )
-
-  db.exec('BEGIN')
-  try {
-    let sort = 0
-    function insert(items, type, parentId = null) {
-      for (const [name, children] of Object.entries(items)) {
-        const parentSort = parentId === null ? sort++ : null
-        const info = insertCat.run(name, getCategoryIcon(name), type, parentId, parentSort)
-        const parentId2 = Number(info.lastInsertRowid)
-
-        if (Array.isArray(children)) {
-          for (const child of children) {
-            insertCat.run(child, getCategoryIcon(child), type, parentId2, null)
-          }
-        } else {
-          insert(children, type, parentId2)
-        }
-      }
-    }
-
-    if (categoriesData['支出']) insert(categoriesData['支出'], 'expense')
-    if (categoriesData['收入']) insert(categoriesData['收入'], 'income')
-
-    db.exec('COMMIT')
-  } catch (e) {
-    db.exec('ROLLBACK')
-    throw e
-  }
 }
 
 export function closeDB() {
