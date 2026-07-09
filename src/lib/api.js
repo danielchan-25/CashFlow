@@ -1,35 +1,20 @@
 const BASE = '/api'
 
-function getPassword() {
-  return localStorage.getItem('cashflow_password') || ''
-}
-
 async function request(path, options = {}) {
   const { method = 'GET', body, params } = options
   let url = `${BASE}${path}`
-  if (params) {
-    const qs = new URLSearchParams(params).toString()
-    url += '?' + qs
-  }
-
-  const headers = { 'Content-Type': 'application/json' }
-  const pw = getPassword()
-  if (pw) headers['Authorization'] = `Bearer ${pw}`
+  if (params) url += '?' + new URLSearchParams(params).toString()
 
   const res = await fetch(url, {
     method,
-    headers,
+    headers: { 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : undefined,
   })
 
-  const contentType = res.headers.get('content-type') || ''
-  if (contentType.includes('text/csv')) {
+  const ct = res.headers.get('content-type') || ''
+  if (ct.includes('text/csv')) {
     if (!res.ok) throw new Error('导出失败')
     return res.blob()
-  }
-
-  if (res.status === 401) {
-    throw new Error('unauthorized')
   }
 
   if (!res.ok) {
@@ -49,14 +34,15 @@ export const api = {
   createTransaction: (data) => request('/transactions', { method: 'POST', body: data }),
   updateTransaction: (id, data) => request(`/transactions/${id}`, { method: 'PUT', body: data }),
   deleteTransaction: (id) => request(`/transactions/${id}`, { method: 'DELETE' }),
-  getAccounts: () => request('/accounts'),
-  createAccount: (data) => request('/accounts', { method: 'POST', body: data }),
-  updateAccount: (id, data) => request(`/accounts/${id}`, { method: 'PUT', body: data }),
-  deleteAccount: (id) => request(`/accounts/${id}`, { method: 'DELETE' }),
   getCategories: () => request('/categories'),
   createCategory: (data) => request('/categories', { method: 'POST', body: data }),
   updateCategory: (id, data) => request(`/categories/${id}`, { method: 'PUT', body: data }),
   deleteCategory: (id) => request(`/categories/${id}`, { method: 'DELETE' }),
-  exportCSV: (params) => request('/transactions/export', qs(params)),
+  getAuthStatus: () => request('/auth/status'),
+  setupPassword: (password) => request('/auth/setup', { method: 'POST', body: { password } }),
+  login: (password) => request('/auth/login', { method: 'POST', body: { password } }),
+  exportCSV: () => request('/transactions/export'),
   importCSV: (rows) => request('/transactions/import', { method: 'POST', body: { rows } }),
+  importCategories: (data) => request('/categories/import', { method: 'POST', body: data }),
+  resetDB: () => request('/reset', { method: 'POST' }),
 }

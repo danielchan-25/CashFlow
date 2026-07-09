@@ -1,24 +1,10 @@
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
 import { today } from '../lib/utils'
+import { buildCategoryTree } from '../lib/categoryUtils'
 import { ArrowUpFromLine, ArrowDownToLine } from 'lucide-react'
 
-function buildTree(categories) {
-  const map = {}
-  const roots = []
-  categories.forEach(c => { map[c.id] = { ...c, children: [] } })
-  categories.forEach(c => {
-    if (c.parent_id != null && c.parent_id !== '' && map[c.parent_id]) {
-      map[c.parent_id].children.push(map[c.id])
-    } else if (c.parent_id == null || c.parent_id === '') {
-      roots.push(map[c.id])
-    }
-  })
-  return { map, roots }
-}
-
 export default function TransactionForm({ onDone, initial }) {
-  const [accounts, setAccounts] = useState([])
   const [categories, setCategories] = useState([])
   const [catLevel1, setCatLevel1] = useState('')
   const [catLevel2, setCatLevel2] = useState('')
@@ -26,14 +12,12 @@ export default function TransactionForm({ onDone, initial }) {
     date: today(),
     type: 'expense',
     amount: '',
-    account_id: '',
     category_id: '',
     note: '',
   })
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    api.getAccounts().then(r => setAccounts(r.data)).catch(err => console.error('加载账户失败', err))
     api.getCategories().then(r => setCategories(r.data)).catch(err => console.error('加载分类失败', err))
   }, [])
 
@@ -51,7 +35,7 @@ export default function TransactionForm({ onDone, initial }) {
     if (path.length >= 2) setCatLevel2(String(path[1].id))
   }, [initial?.id, categories])
 
-  const { map, roots } = buildTree(categories)
+  const { map, roots } = buildCategoryTree(categories)
   const filteredRoots = roots.filter(c => c.type === form.type)
   const l1Options = filteredRoots
   const l2Options = catLevel1 ? map[Number(catLevel1)]?.children || [] : []
@@ -80,10 +64,10 @@ export default function TransactionForm({ onDone, initial }) {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!form.amount || !form.account_id || !form.category_id) return
+    if (!form.amount || !form.category_id) return
     setSubmitting(true)
     try {
-      const payload = { account_id: form.account_id, category_id: form.category_id, amount: form.amount, type: form.type, date: form.date, note: form.note }
+      const payload = { category_id: form.category_id, amount: form.amount, type: form.type, date: form.date, note: form.note }
       if (initial?.id) {
         await api.updateTransaction(initial.id, payload)
       } else {
@@ -116,17 +100,10 @@ export default function TransactionForm({ onDone, initial }) {
         className={`${inputClass} text-lg font-bold tabular-nums`}
         style={{ fontFamily: 'JetBrains Mono, monospace' }} autoFocus />
 
-      <div className="grid grid-cols-2 gap-3">
-        <select value={form.account_id} onChange={e => set('account_id', e.target.value)}
-          className={inputClass}>
-          <option value="">🏦 选择账户</option>
-          {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-        </select>
-        <select value={catLevel1} onChange={handleLevel1} className={inputClass}>
+      <select value={catLevel1} onChange={handleLevel1} className={inputClass}>
           <option value="">📂 选择大类</option>
           {l1Options.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
         </select>
-      </div>
 
       {l2Options.length > 0 && (
         <select value={catLevel2} onChange={handleLevel2} className={inputClass}>

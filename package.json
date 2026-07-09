@@ -4,19 +4,14 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:worker": "wrangler pages dev dist --port=8788",
-    "build": "vite build && npm run build:worker",
-    "build:worker": "esbuild functions/_worker.js --bundle --outfile=dist/_worker.js --format=esm --platform=browser --external:__STATIC_CONTENT_MANIFEST",
-    "preview": "vite preview",
-    "db:migrate": "wrangler d1 execute cashflow --file=migrations/001_init.sql --local",
-    "db:migrate:remote": "wrangler d1 execute cashflow --file=migrations/001_init.sql --remote",
-    "db:reset:remote": "wrangler d1 execute cashflow --file=migrations/reset_data.sql --remote",
-    "db:counts:remote": "wrangler d1 execute cashflow --remote --command \"SELECT 'accounts' AS table_name, COUNT(*) AS count FROM accounts UNION ALL SELECT 'categories', COUNT(*) FROM categories UNION ALL SELECT 'transactions', COUNT(*) FROM transactions;\"",
-    "check:encoding": "node tools/check-encoding.cjs"
+    "server": "node server/index.js",
+    "dev": "concurrently -k \"npm run server\" \"vite\"",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "hono": "^4.7.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
     "lucide-react": "^1.17.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -26,8 +21,8 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.0",
     "@vitejs/plugin-react": "^4.3.0",
+    "concurrently": "^9.0.0",
     "tailwindcss": "^4.1.0",
-    "vite": "^6.1.0",
-    "wrangler": "^4.0.0"
+    "vite": "^6.1.0"
   }
 }

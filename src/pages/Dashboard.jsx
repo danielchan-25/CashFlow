@@ -1,28 +1,14 @@
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
 import { today, formatMoney } from '../lib/utils'
+import { buildCategoryTree } from '../lib/categoryUtils'
 import ReceiptToast from '../components/ReceiptToast'
 
 const inputClass = 'w-full bg-muted rounded-xl px-4 py-3 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all duration-200'
 
-function buildTree(categories) {
-  const map = {}
-  const roots = []
-  categories.forEach(c => { map[c.id] = { ...c, children: [] } })
-  categories.forEach(c => {
-    if (c.parent_id != null && c.parent_id !== '' && map[c.parent_id]) {
-      map[c.parent_id].children.push(map[c.id])
-    } else if (c.parent_id == null || c.parent_id === '') {
-      roots.push(map[c.id])
-    }
-  })
-  return { map, roots }
-}
-
 export default function Dashboard() {
-  const [accounts, setAccounts] = useState([])
   const [categories, setCategories] = useState([])
-  const [form, setForm] = useState({ type: 'expense', amount: '', account_id: '', category_id: '', date: today(), note: '' })
+  const [form, setForm] = useState({ type: 'expense', amount: '', category_id: '', date: today(), note: '' })
   const [catLevel1, setCatLevel1] = useState('')
   const [catLevel2, setCatLevel2] = useState('')
   const [toast, setToast] = useState(null)
@@ -40,12 +26,11 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    api.getAccounts().then(r => setAccounts(r.data)).catch(err => console.error('加载账户失败', err))
     api.getCategories().then(r => setCategories(r.data)).catch(err => console.error('加载分类失败', err))
     loadTodayTxs()
   }, [])
 
-  const { map, roots } = buildTree(categories)
+  const { map, roots } = buildCategoryTree(categories)
   const filteredRoots = roots.filter(c => c.type === form.type)
 
   const l1Options = filteredRoots
@@ -83,19 +68,18 @@ export default function Dashboard() {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!form.amount || !form.account_id || !form.category_id || submitting) return
+    if (!form.amount || !form.category_id || submitting) return
     setSubmitting(true)
     try {
       await api.createTransaction(form)
       const catName = categories.find(c => c.id === Number(form.category_id))?.name || ''
-      const accName = accounts.find(a => a.id === Number(form.account_id))?.name || ''
       setToast({
         amount: Math.abs(Number(form.amount)),
         type: form.type,
         category: catName,
-        account: accName,
+        account: '',
       })
-      setForm({ type: form.type, amount: '', account_id: '', category_id: '', date: today(), note: '' })
+      setForm({ type: form.type, amount: '', category_id: '', date: today(), note: '' })
       setCatLevel1('')
       setCatLevel2('')
       loadTodayTxs()
@@ -138,12 +122,6 @@ export default function Dashboard() {
 
         <div className="receipt-dash" />
 
-        <select value={form.account_id} onChange={e => set('account_id', e.target.value)}
-          className={inputClass}>
-          <option value="">🏦 选择账户</option>
-          {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-        </select>
-
         <select value={catLevel1} onChange={handleLevel1} className={inputClass}>
           <option value="">📂 选择大类</option>
           {l1Options.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
@@ -174,30 +152,46 @@ export default function Dashboard() {
 
         <div className="receipt-cut" />
 
-        <button type="submit" disabled={!form.amount || !form.account_id || !form.category_id || submitting}
+        <button type="submit" disabled={!form.amount || !form.category_id || submitting}
           className="w-full py-3 rounded-xl text-sm font-semibold text-primary-foreground bg-primary hover:brightness-110 transition-all active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-sm">
           ✅ 记录
         </button>
       </form>
 
-      {todayTxs.length > 0 && (
-        <div className="mt-6 space-y-2 animate-in slide-up fill-both">
-          <h2 className="text-sm font-semibold">📋 今日记录</h2>
-          <div className="glass-card-flat rounded-2xl divide-y divide-border/40">
-            {todayTxs.map((tx) => (
-              <div key={tx.id} className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-sm truncate">{tx.category_icon} {tx.category_name}</span>
-                  {tx.note && <span className="text-xs text-muted-foreground truncate hidden sm:inline">— {tx.note}</span>}
-                </div>
-                <span className={`text-sm font-bold tabular-nums shrink-0 ml-3 ${tx.type === 'expense' ? 'text-red-500' : 'text-emerald-500'}`}>
-                  {tx.type === 'expense' ? '-' : '+'}¥{formatMoney(Math.abs(tx.amount))}
-                </span>
+      {todayTxs.length > 0 && (() => {
+        const todayExpense = todayTxs.filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0)
+        const todayIncome = todayTxs.filter(t => t.type === 'income').reduce((s, t) => s + Math.abs(t.amount), 0)
+        return (
+          <div className="mt-6 space-y-2 animate-in slide-up fill-both">
+            <h2 className="text-sm font-semibold">📋 今日记录</h2>
+            <div className="flex gap-3 text-xs">
+              <div className="flex-1 glass-card rounded-2xl px-3 py-2 flex items-center gap-2">
+                <span className="text-red-500 font-bold">💸</span>
+                <span className="text-muted-foreground">支出</span>
+                <span className="ml-auto font-bold text-red-500 tabular-nums">¥{formatMoney(todayExpense)}</span>
               </div>
-            ))}
+              <div className="flex-1 glass-card rounded-2xl px-3 py-2 flex items-center gap-2">
+                <span className="text-emerald-500 font-bold">💰</span>
+                <span className="text-muted-foreground">收入</span>
+                <span className="ml-auto font-bold text-emerald-500 tabular-nums">¥{formatMoney(todayIncome)}</span>
+              </div>
+            </div>
+            <div className="glass-card-flat rounded-2xl divide-y divide-border/40">
+              {todayTxs.map((tx) => (
+                <div key={tx.id} className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-sm truncate">{tx.category_icon} {tx.category_name}</span>
+                    {tx.note && <span className="text-xs text-muted-foreground truncate hidden sm:inline">— {tx.note}</span>}
+                  </div>
+                  <span className={`text-sm font-bold tabular-nums shrink-0 ml-3 ${tx.type === 'expense' ? 'text-red-500' : 'text-emerald-500'}`}>
+                    {tx.type === 'expense' ? '-' : '+'}¥{formatMoney(Math.abs(tx.amount))}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {toast && <ReceiptToast {...toast} onClose={() => setToast(null)} />}
     </div>

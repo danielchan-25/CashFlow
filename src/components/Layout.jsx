@@ -7,13 +7,8 @@ import { useTheme } from '../contexts/ThemeContext'
 const navItems = [
   { to: '/', label: '📝 记账', end: true },
   { to: '/transactions', label: '📊 概览' },
-]
-
-const moreItems = [
-  { to: '/import', label: '📥 导入' },
-  { to: '/export', label: '📤 导出' },
-  { to: '/accounts', label: '🏦 账户' },
   { to: '/categories', label: '🏷️ 分类' },
+  { to: '/data', label: '🗄️ 数据' },
 ]
 
 function Sidebar() {
@@ -41,22 +36,6 @@ function Sidebar() {
       <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
         {navItems.map(({ to, label, end }) => (
           <NavLink key={to} to={to} end={end}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group">
-            {({ isActive }) => (
-              <>
-                <span className={`transition-colors duration-200 ${isActive ? 'text-foreground font-semibold' : 'text-muted-foreground group-hover:text-foreground'}`}>
-                  {label}
-                </span>
-                {isActive && (
-                  <span className="ml-auto w-1 h-5 rounded-full bg-primary" />
-                )}
-              </>
-            )}
-          </NavLink>
-        ))}
-        <div className="border-t border-border/40 my-2" />
-        {moreItems.map(({ to, label }) => (
-          <NavLink key={to} to={to}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group">
             {({ isActive }) => (
               <>
@@ -114,11 +93,9 @@ function BottomTabBar() {
     }
   }, [showMore])
 
+  const mobileTabs = navItems.slice(0, 2)
   const moreItems = [
-    { to: '/import', label: '📥 导入' },
-    { to: '/export', label: '📤 导出' },
-    { to: '/accounts', label: '🏦 账户' },
-    { to: '/categories', label: '🏷️ 分类' },
+    ...navItems.slice(2).map(({ to, label }) => ({ to, label })),
     { type: 'divider' },
     { type: 'theme', label: '🎨 主题' },
     { type: 'logout', label: '🚪 退出' },
@@ -166,7 +143,7 @@ function BottomTabBar() {
         </>
       )}
       <div className="max-w-lg mx-auto flex items-center justify-around h-16 px-2">
-        {navItems.map(({ to, label, end }) => (
+        {mobileTabs.map(({ to, label, end }) => (
           <NavLink key={to} to={to} end={end}
             className="flex flex-col items-center gap-0.5 relative py-1 group min-w-0 flex-1">
             {({ isActive }) => (

@@ -21,7 +21,7 @@ export default function ReceiptToast({ amount, type, category, account, onClose 
             {type === 'income' ? '+' : '-'}¥{Number(amount).toLocaleString('zh-CN', { minimumFractionDigits: 2 })}
           </p>
           <p className="text-[11px] text-muted-foreground truncate">
-            {category && <>{category} · </>}{account}
+            {category}{account ? ` · ${account}` : ''}
           </p>
         </div>
       </div>

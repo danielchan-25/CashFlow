@@ -1,23 +1,43 @@
 import { useState, useRef } from 'react'
 import { api } from '../lib/api'
 import { parseCSV } from '../lib/csv'
-import { Upload, FileSpreadsheet, CheckCircle, AlertCircle } from 'lucide-react'
+import { Download, Upload, FileSpreadsheet, CheckCircle, AlertCircle } from 'lucide-react'
 
 const fields = [
   { key: 'date', label: '日期', required: true },
-  { key: 'type', label: '类型(expense/income)', required: true },
-  { key: 'amount', label: '金额', required: true },
-  { key: 'account_name', label: '账户名称', required: true },
-  { key: 'category_name', label: '分类名称' },
+  { key: 'type', label: '类型 (expense/income 或 支出/收入)', required: true },
+  { key: 'amount', label: '金额 (支出为负数)', required: true },
+  { key: 'category_parent', label: '大类名称 (留空则仅按中类匹配)' },
+  { key: 'category_name', label: '分类名称 (中类)' },
   { key: 'note', label: '备注' },
 ]
 
-export default function Import() {
+export default function DataIO() {
+  const [exporting, setExporting] = useState(false)
   const [preview, setPreview] = useState(null)
   const [mapping, setMapping] = useState({})
   const [importing, setImporting] = useState(false)
   const [result, setResult] = useState(null)
   const fileRef = useRef()
+
+  // ---------- export ----------
+
+  async function handleExport() {
+    setExporting(true)
+    try {
+      const blob = await api.exportCSV()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `cashflow_${new Date().toISOString().slice(0, 10)}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  // ---------- import ----------
 
   function handleFile(e) {
     const file = e.target.files[0]
@@ -30,7 +50,7 @@ export default function Import() {
       const guess = {}
       const headerLower = headers.map(h => h.toLowerCase())
       fields.forEach(f => {
-        const idx = headerLower.findIndex(h => h.includes(f.key.replace('_', '').toLowerCase()))
+        const idx = headerLower.findIndex(h => h.includes(f.key.replace(/_/g, '').toLowerCase()))
         if (idx >= 0) guess[f.key] = idx
       })
       setMapping(guess)
@@ -69,15 +89,58 @@ export default function Import() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4 relative">
+    <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-3 animate-in slide-up fill-both">
         <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-          <Upload size={18} className="text-primary" />
+          <Download size={18} className="text-primary" />
         </div>
-        <h1 className="text-lg font-bold">📥 导入 CSV</h1>
+        <h1 className="text-lg font-bold">📥📤 数据导入/导出</h1>
       </div>
 
-      <div className="glass-card-strong rounded-2xl p-5 space-y-4">
+      {/* ============ Export ============ */}
+      <div className="glass-card-strong rounded-2xl p-5 space-y-4 animate-in slide-up fill-both">
+        <div className="flex items-center gap-2">
+          <Download size={16} className="text-muted-foreground" />
+          <h2 className="text-sm font-semibold">📤 导出全部数据</h2>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          将数据库中所有交易记录导出为 CSV 文件，不限制日期范围。
+        </p>
+        <button onClick={handleExport} disabled={exporting}
+          className="px-6 py-2.5 rounded-xl text-sm font-semibold text-primary-foreground bg-primary hover:brightness-110 transition-all active:scale-[0.97] disabled:opacity-50 shadow-sm flex items-center gap-2">
+          <Download size={14} />
+          {exporting ? '导出中...' : '📥 导出 CSV'}
+        </button>
+      </div>
+
+      {/* ============ Import ============ */}
+      <div className="glass-card-strong rounded-2xl p-5 space-y-4 animate-in slide-up fill-both"
+        style={{ animationDelay: '80ms' }}>
+
+        <div className="flex items-center gap-2">
+          <Upload size={16} className="text-muted-foreground" />
+          <h2 className="text-sm font-semibold">📥 导入 CSV</h2>
+        </div>
+
+        {/* usage guide */}
+        <div className="bg-muted rounded-xl p-4 text-xs space-y-2">
+          <p className="font-semibold text-muted-foreground">📋 CSV 格式说明</p>
+          <p>推荐字段（按顺序）：</p>
+          <code className="block bg-background rounded-lg px-3 py-2 text-[11px] leading-relaxed overflow-x-auto whitespace-pre">
+            date,type,amount,category_parent,category_name,note
+            2026-07-01,expense,25.80,美食,堂食,午餐
+            2026-07-01,income,5000,工资收入,,7月工资
+          </code>
+          <ul className="space-y-1 text-muted-foreground break-words">
+            <li>• <strong>date</strong> — 日期，格式 YYYY-MM-DD</li>
+            <li>• <strong>type</strong> — expense 或 income（也支持中文"支出"/"收入"）</li>
+            <li>• <strong>amount</strong> — 金额（正数，支出请用负数或靠 type 区分）</li>
+            <li>• <strong>category_parent</strong> — 大类名称（如"美食"），留空则仅按中类匹配</li>
+            <li>• <strong>category_name</strong> — 中类名称（如"堂食"）</li>
+            <li>• <strong>note</strong> — 备注，可选</li>
+          </ul>
+        </div>
+
         <div>
           <label className="block text-xs font-semibold mb-2 text-muted-foreground flex items-center gap-1.5">
             <FileSpreadsheet size={14} />
@@ -93,8 +156,8 @@ export default function Import() {
               <p className="text-xs font-semibold mb-2 text-muted-foreground">🔗 字段映射</p>
               <div className="space-y-2">
                 {fields.map(f => (
-                  <div key={f.key} className="flex items-center gap-2 text-sm">
-                    <span className="w-24 shrink-0 text-muted-foreground">
+                  <div key={f.key} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm">
+                    <span className="sm:w-32 text-muted-foreground">
                       {f.label} {f.required && <span className="text-destructive">*</span>}
                     </span>
                     <select value={mapping[f.key] ?? ''}
@@ -110,8 +173,8 @@ export default function Import() {
 
             <div className="animate-in slide-up fill-both">
               <p className="text-xs font-semibold mb-2 text-muted-foreground">👁️ 数据预览（前 5 行）</p>
-              <div className="overflow-auto -mx-5 px-5">
-                <table className="text-xs w-full border-collapse">
+              <div className="overflow-x-auto -mx-5 px-5">
+                <table className="text-xs w-full border-collapse whitespace-nowrap">
                   <thead>
                     <tr>
                       {preview.headers.map((h, i) => (
@@ -148,19 +211,19 @@ export default function Import() {
           <div className={`p-3 rounded-xl text-sm animate-in slide-up fill-both ${
             result.errors?.length ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'
           }`}>
-          <div className="flex items-center gap-2 font-medium mb-1">
-            {result.errors?.length ? <AlertCircle size={14} /> : <CheckCircle size={14} />}
-            <span>成功导入 {result.imported} 条记录</span>
-          </div>
-          {result.errors?.length > 0 && (
-            <div className="mt-2 space-y-0.5 text-xs">
-              <p>错误：</p>
-              {result.errors.map((e, i) => (
-                <p key={i}>第 {e.row} 行: {e.error}</p>
-              ))}
+            <div className="flex items-center gap-2 font-medium mb-1">
+              {result.errors?.length ? <AlertCircle size={14} /> : <CheckCircle size={14} />}
+              <span>成功导入 {result.imported} 条记录</span>
             </div>
-          )}
-        </div>
+            {result.errors?.length > 0 && (
+              <div className="mt-2 space-y-0.5 text-xs">
+                <p>错误：</p>
+                {result.errors.map((e, i) => (
+                  <p key={i}>第 {e.row} 行: {e.error}</p>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

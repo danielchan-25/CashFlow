@@ -3,20 +3,15 @@ import { api } from '../lib/api'
 import TransactionList from '../components/TransactionList'
 import TransactionForm from '../components/TransactionForm'
 import { formatMoney, currentMonth } from '../lib/utils'
-import { Search, TrendingDown, TrendingUp, Wallet } from 'lucide-react'
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { Search, TrendingDown } from 'lucide-react'
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
+import { buildCategoryTree } from '../lib/categoryUtils'
 
 const COLORS = [
   '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
   '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
   '#F8C471', '#82E0AA', '#F1948A', '#85929E', '#73C6B6',
 ]
-
-function buildCategoryMap(categories) {
-  const map = {}
-  categories.forEach(c => { map[c.id] = { ...c } })
-  return map
-}
 
 function findRoot(catId, catMap) {
   let current = catMap[catId]
@@ -60,10 +55,9 @@ function getPageNumbers(current, total) {
 
 export default function Transactions() {
   const [transactions, setTransactions] = useState([])
-  const [accounts, setAccounts] = useState([])
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filters, setFilters] = useState({ type: '', account_id: '', category_id: '', search: '', page: 1 })
+  const [filters, setFilters] = useState({ type: '', category_id: '', search: '', page: 1 })
   const [total, setTotal] = useState(0)
   const [summary, setSummary] = useState(null)
   const [month, setMonth] = useState(currentMonth())
@@ -73,13 +67,9 @@ export default function Transactions() {
 
   const loadData = useCallback(async () => {
     try {
-      const [txRes, accRes] = await Promise.all([
-        api.getTransactions(filters),
-        api.getAccounts(),
-      ])
+      const txRes = await api.getTransactions(filters)
       setTransactions(txRes.data)
       setTotal(txRes.total)
-      setAccounts(accRes.data)
     } catch (err) {
       console.error('加载交易失败', err)
     }
@@ -114,24 +104,12 @@ export default function Transactions() {
     api.getSummary(month).then(r => setSummary(r)).catch(err => console.error('刷新统计失败', err))
   }
 
-  const catMap = buildCategoryMap(categories)
+  const { map: catMap, roots } = buildCategoryTree(categories)
+  const filteredRoots = roots.filter(c => !filters.type || c.type === filters.type)
 
-  const filteredCats = categories.filter(c => !filters.type || c.type === filters.type)
-  const catChildren = {}
-  const roots = []
-  filteredCats.forEach(c => {
-    if (c.parent_id != null && c.parent_id !== '') {
-      if (!catChildren[c.parent_id]) catChildren[c.parent_id] = []
-      catChildren[c.parent_id].push(c)
-    } else {
-      roots.push(c)
-    }
-  })
-  roots.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-
-  const l1Options = roots
-  const l2Options = catLevel1 ? catChildren[Number(catLevel1)] || [] : []
-  const l3Options = catLevel2 ? catChildren[Number(catLevel2)] || [] : []
+  const l1Options = filteredRoots
+  const l2Options = catLevel1 ? catMap[Number(catLevel1)]?.children || [] : []
+  const l3Options = catLevel2 ? catMap[Number(catLevel2)]?.children || [] : []
 
   const totalPages = Math.ceil(total / 50)
 
@@ -149,14 +127,14 @@ export default function Transactions() {
     const val = e.target.value
     setCatLevel1(val)
     setCatLevel2('')
-    const children = val ? catChildren[Number(val)] || [] : []
+    const children = val ? catMap[Number(val)]?.children || [] : []
     setFilters(f => ({ ...f, category_id: children.length === 0 ? val : '', page: 1 }))
   }
 
   function handleLevel2(e) {
     const val = e.target.value
     setCatLevel2(val)
-    const children = val ? catChildren[Number(val)] || [] : []
+    const children = val ? catMap[Number(val)]?.children || [] : []
     setFilters(f => ({ ...f, category_id: children.length === 0 ? val : '', page: 1 }))
   }
 
@@ -210,7 +188,7 @@ export default function Transactions() {
 
       {summary && (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 animate-in slide-up fill-both">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in slide-up fill-both">
             <div className="glass-card rounded-2xl px-4 py-3.5 flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
                 <TrendingDown size={18} className="text-red-500" />
@@ -222,22 +200,11 @@ export default function Transactions() {
             </div>
             <div className="glass-card rounded-2xl px-4 py-3.5 flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
-                <TrendingUp size={18} className="text-emerald-500" />
+                <TrendingDown size={18} className="text-emerald-500" />
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] text-muted-foreground">本月收入</p>
                 <p className="text-sm font-bold text-emerald-500 tabular-nums truncate">¥{formatMoney(summary.income)}</p>
-              </div>
-            </div>
-            <div className="glass-card rounded-2xl px-4 py-3.5 flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${summary.balance >= 0 ? 'bg-primary/10' : 'bg-red-500/10'}`}>
-                <Wallet size={18} className={summary.balance >= 0 ? 'text-primary' : 'text-red-500'} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[11px] text-muted-foreground">净余额</p>
-                <p className={`text-sm font-bold tabular-nums truncate ${summary.balance >= 0 ? 'text-primary' : 'text-red-500'}`}>
-                  {summary.balance >= 0 ? '+' : ''}¥{formatMoney(summary.balance)}
-                </p>
               </div>
             </div>
           </div>
@@ -262,11 +229,6 @@ export default function Transactions() {
           <option value="">📋 全部类型</option>
           <option value="expense">支出</option>
           <option value="income">收入</option>
-        </select>
-        <select value={filters.account_id} onChange={e => setFilters(f => ({ ...f, account_id: e.target.value, page: 1 }))}
-          className="bg-muted rounded-lg px-3 py-1.5 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all">
-          <option value="">🏦 全部账户</option>
-          {accounts.map(a => <option key={a.id} value={a.id}>{(a.type === 'cash' ? '💵' : a.type === 'bank' ? '🏦' : a.type === 'credit' ? '💳' : a.type === 'ewallet' ? '📱' : a.type === 'investment' ? '📈' : '')} {a.name}</option>)}
         </select>
         <div className="relative flex-1 min-w-[120px]">
           <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />

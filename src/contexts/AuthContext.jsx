@@ -1,47 +1,39 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import { api } from '../lib/api'
 
 const AuthContext = createContext()
-
-async function checkAuth(password) {
-  const headers = { 'Content-Type': 'application/json' }
-  if (password) headers['Authorization'] = `Bearer ${password}`
-  try {
-    const res = await fetch('/api/accounts', { headers })
-    return res.ok
-  } catch {
-    return false
-  }
-}
 
 export function AuthProvider({ children }) {
   const [authenticated, setAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [hasPassword, setHasPassword] = useState(false)
 
   useEffect(() => {
-    const saved = localStorage.getItem('cashflow_password')
-    checkAuth(saved).then(ok => {
-      if (ok) {
-        setAuthenticated(true)
-      } else {
-        localStorage.removeItem('cashflow_password')
-      }
-    }).finally(() => setLoading(false))
+    api.getAuthStatus()
+      .then(res => {
+        setHasPassword(res.hasPassword)
+        if (!res.hasPassword) setAuthenticated(true)
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }, [])
 
   async function login(password) {
-    const ok = await checkAuth(password)
-    if (!ok) throw new Error('密码错误')
-    localStorage.setItem('cashflow_password', password)
+    if (hasPassword) {
+      await api.login(password)
+    } else {
+      await api.setupPassword(password)
+      setHasPassword(true)
+    }
     setAuthenticated(true)
   }
 
   function logout() {
-    localStorage.removeItem('cashflow_password')
     setAuthenticated(false)
   }
 
   return (
-    <AuthContext.Provider value={{ authenticated, loading, login, logout }}>
+    <AuthContext.Provider value={{ authenticated, loading, hasPassword, login, logout }}>
       {children}
     </AuthContext.Provider>
   )

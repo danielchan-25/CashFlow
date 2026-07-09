@@ -42,7 +42,7 @@ export default function TransactionList({ transactions, onEdit, onDelete, loadin
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{t.category_icon || ''} {t.category_name || t.note || '未分类'}</p>
             <p className="text-xs text-muted-foreground truncate">
-              {formatDate(t.date)}{t.account_name && ` · ${t.account_name}`}{t.note && ` · ${t.note}`}
+              {formatDate(t.date)}{t.note && ` · ${t.note}`}
             </p>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">

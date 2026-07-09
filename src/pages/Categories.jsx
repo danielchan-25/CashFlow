@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { api } from '../lib/api'
 import { categoriesData } from '../data/categories'
 import { Tags, Plus, X, ChevronDown, ChevronRight, Upload } from 'lucide-react'
@@ -11,14 +11,30 @@ export default function Categories() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ name: '', icon: '📦', type: 'expense', parent_id: '' })
   const [expanded, setExpanded] = useState({})
+  const [loadError, setLoadError] = useState('')
+  const [editingIcon, setEditingIcon] = useState(null)
+  const pickerRef = useRef(null)
 
   useEffect(() => { loadCategories() }, [])
 
+  useEffect(() => {
+    function handleClick(e) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target)) {
+        setEditingIcon(null)
+      }
+    }
+    if (editingIcon) document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [editingIcon])
+
   async function loadCategories() {
     try {
+      setLoadError('')
       const res = await api.getCategories()
-      setCategories(res.data)
+      if (res.data) setCategories(res.data)
+      else setCategories([])
     } catch (err) {
+      setLoadError('加载失败：' + err.message)
       console.error('加载分类失败', err)
     }
   }
@@ -52,8 +68,8 @@ export default function Categories() {
     return nodes.map(node => (
       <div key={node.id}>
         <div
-          className="glass-card rounded-2xl px-4 py-2.5 flex items-center justify-between text-sm transition-all hover:bg-accent/30 cursor-pointer"
-          style={{ marginLeft: depth * 20 }}
+          className="glass-card rounded-2xl px-3 sm:px-4 py-2.5 flex items-center justify-between text-sm transition-all hover:bg-accent/30 cursor-pointer"
+          style={{ marginLeft: Math.min(depth * 16, 64) }}
           onClick={() => {
             if (node.children.length > 0) {
               setExpanded(p => ({ ...p, [node.id]: !p[node.id] }))
@@ -64,13 +80,30 @@ export default function Categories() {
               expanded[node.id] ? <ChevronDown size={14} className="shrink-0 text-muted-foreground" />
                 : <ChevronRight size={14} className="shrink-0 text-muted-foreground" />
             ) : <span className="w-3.5 shrink-0" />}
-            <span className="truncate">{node.icon} {node.name}</span>
+            <span className="truncate">
+              <button onClick={e => { e.stopPropagation(); setEditingIcon(node.id) }}
+                className="inline hover:scale-110 transition-transform active:scale-95 cursor-pointer">
+                {node.icon}
+              </button>
+              {node.name}
+            </span>
           </div>
           <button onClick={e => { e.stopPropagation(); handleDelete(node.id) }}
             className="text-muted-foreground hover:text-destructive transition-all shrink-0 ml-2">
             <X size={12} />
           </button>
         </div>
+        {editingIcon === node.id && (
+          <div ref={pickerRef} className="ml-8 mb-2 p-2 glass-card rounded-xl max-h-32 overflow-y-auto flex flex-wrap gap-1"
+            style={{ marginLeft: Math.min((depth + 1) * 16 + 4, 72) }}>
+            {(node.type === 'income' ? incomeEmojis : expenseEmojis).map(e => (
+              <button key={e} onClick={() => handleIconChange(node.id, e)}
+                className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm hover:bg-accent transition-all ${node.icon === e ? 'ring-2 ring-primary' : ''}`}>
+                {e}
+              </button>
+            ))}
+          </div>
+        )}
         {node.children.length > 0 && expanded[node.id] && renderTree(node.children, depth + 1)}
       </div>
     ))
@@ -98,6 +131,16 @@ export default function Categories() {
     loadCategories()
   }
 
+  async function handleIconChange(id, newIcon) {
+    try {
+      await api.updateCategory(id, { icon: newIcon })
+      setEditingIcon(null)
+      await loadCategories()
+    } catch (err) {
+      alert('修改图标失败：' + err.message)
+    }
+  }
+
   async function handleDelete(id) {
     try {
       await api.deleteCategory(id)
@@ -114,21 +157,10 @@ export default function Categories() {
   }
 
   async function handleImport() {
-    if (!confirm('将清空所有分类和交易记录，从 categories.json 重新导入，确定？')) return
+    if (!confirm('将清空所有分类和交易记录，从 categories.js 重新导入，确定？')) return
     try {
-      const headers = { 'Content-Type': 'application/json' }
-      const pw = localStorage.getItem('cashflow_password')
-      if (pw) headers['Authorization'] = 'Bearer ' + pw
-      const res = await fetch('/api/categories/import', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(categoriesData),
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || '导入失败')
-      }
-      loadCategories()
+      await api.importCategories(categoriesData)
+      await loadCategories()
       alert('✅ 导入成功')
     } catch (err) {
       alert('导入失败：' + err.message)
@@ -137,26 +169,33 @@ export default function Categories() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
-      <div className="flex items-center justify-between animate-in slide-up fill-both">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+      <div className="flex flex-wrap items-center justify-between gap-2 animate-in slide-up fill-both">
+        <div className="flex items-center gap-2">
+          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
             <Tags size={18} className="text-primary" />
           </div>
-          <h1 className="text-lg font-bold">🏷️ 分类管理</h1>
+          <h1 className="text-base sm:text-lg font-bold">🏷️ 分类管理</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button onClick={handleImport}
-            className="px-4 py-2 rounded-xl text-sm font-semibold bg-muted text-muted-foreground hover:bg-accent transition-all active:scale-[0.97] flex items-center gap-1.5">
-            <Upload size={14} />
-            🔄 重新导入
+            className="px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-muted text-muted-foreground hover:bg-accent transition-all active:scale-[0.97] flex items-center gap-1">
+            <Upload size={13} />
+            <span className="hidden sm:inline">🔄 重新导入</span>
+            <span className="sm:hidden">导入</span>
           </button>
           <button onClick={() => setShowForm(!showForm)}
-            className="px-4 py-2 rounded-xl text-sm font-semibold text-primary-foreground bg-primary hover:brightness-110 transition-all active:scale-[0.97] shadow-sm flex items-center gap-1.5">
-            <Plus size={14} />
-            {showForm ? '取消' : '➕ 添加'}
+            className="px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold text-primary-foreground bg-primary hover:brightness-110 transition-all active:scale-[0.97] shadow-sm flex items-center gap-1">
+            <Plus size={13} />
+            {showForm ? '取消' : <><span className="hidden sm:inline">➕ 添加</span><span className="sm:hidden">添加</span></>}
           </button>
         </div>
       </div>
+
+      {loadError && (
+        <div className="p-3 rounded-xl text-sm bg-destructive/10 text-destructive animate-in slide-up fill-both">
+          ⚠️ {loadError}
+        </div>
+      )}
 
       {showForm && (
         <form onSubmit={handleSubmit} className="glass-card-strong rounded-2xl p-5 space-y-3 animate-in slide-up fill-both">
@@ -169,12 +208,12 @@ export default function Categories() {
             ))}
           </div>
 
-          <div className="flex gap-3">
+          <div className="grid grid-cols-[8fr_2fr] gap-3">
             <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               placeholder="分类名称" required
-              className="flex-1 bg-muted rounded-lg px-3.5 py-2.5 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all" />
+              className="w-full bg-muted rounded-lg px-3.5 py-2.5 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all min-w-0" />
             <select value={form.icon} onChange={e => setForm(f => ({ ...f, icon: e.target.value }))}
-              className="w-20 bg-muted rounded-lg px-3.5 py-2.5 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all text-center">
+              className="w-full bg-muted rounded-lg px-3.5 py-2.5 text-sm outline-none ring-1 ring-border focus:ring-2 focus:ring-primary transition-all text-center min-w-0">
               {emojis.map(e => <option key={e} value={e}>{e}</option>)}
             </select>
           </div>

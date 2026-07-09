@@ -4,10 +4,8 @@ import Layout from './components/Layout'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Transactions from './pages/Transactions'
-import Accounts from './pages/Accounts'
 import Categories from './pages/Categories'
-import Import from './pages/Import'
-import Export from './pages/Export'
+import DataIO from './pages/DataIO'
 
 function ProtectedRoute({ children }) {
   const { authenticated, loading } = useAuth()
@@ -29,10 +27,8 @@ export default function App() {
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
         <Route path="transactions" element={<Transactions />} />
-        <Route path="accounts" element={<Accounts />} />
         <Route path="categories" element={<Categories />} />
-        <Route path="import" element={<Import />} />
-        <Route path="export" element={<Export />} />
+        <Route path="data" element={<DataIO />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
