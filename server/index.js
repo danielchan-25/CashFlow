@@ -8,7 +8,7 @@ const app = express()
 const PORT = process.env.PORT || 3002
 
 app.use(cors())
-app.use(express.json())
+app.use(express.json({ limit: '10mb' }))
 
 // ---------- auth ----------
 
@@ -108,10 +108,106 @@ app.delete('/api/categories/:id', (req, res) => {
 
 app.post('/api/categories/import', (req, res) => {
   const db = getDB()
-  db.prepare('DELETE FROM transactions').run()
+
+  // Read all transactions with their current categories, preserving import order
+  const rows = db.prepare(`
+    SELECT t.id, t.type as tx_type,
+           c.name as cat_name, c.parent_id as cat_parent_id,
+           p.name as parent_name
+    FROM transactions t
+    LEFT JOIN categories c ON t.category_id = c.id
+    LEFT JOIN categories p ON c.parent_id = p.id
+    ORDER BY t.id ASC
+  `).all()
+
+  // No data → just clear categories
+  if (rows.length === 0) {
+    db.prepare('DELETE FROM categories').run()
+    return res.json({ success: true, rebuilt: false, message: '已清空所有分类' })
+  }
+
+  // Collect unique (type, parent_name, cat_name) preserving CSV import order
+  const seen = new Set()
+  const uniqueCats = []
+  for (const r of rows) {
+    if (!r.cat_name) continue
+    const key = r.parent_name ? `${r.tx_type}:${r.parent_name}:${r.cat_name}` : `${r.tx_type}::${r.cat_name}`
+    if (!seen.has(key)) {
+      seen.add(key)
+      uniqueCats.push({ type: r.tx_type, parentName: r.parent_name || '', childName: r.cat_name })
+    }
+  }
+
+  // Assign distinct emojis
+  const emojis = ['🍱','🚗','🏠','👕','📱','💊','🎮','📚','✈️','🎁','💄','🏋️','🐱','💼','🛒','🍜','☕','🎬','🎵','🐾','🍪','🍻','🧴','🚌','🚘','🏢','💡','🔑','🛋️','🏨','🎯','📋','📞','☁️','🎤','🖨️','🏥','💆','🧧','🏡','🎓','📖','🏕️','🔒','🌸','🐶','🔗','💉','🩺','💇','🍽️','🥡','🍳','🚇','🚄','🚕','⛽','🅿️','🔧','🛣️','🎫','🤖','🍎','🌐','🖥️','🍖','🪣','🛏️']
+  let ei = 0
+  function nextEmoji() { return emojis[ei++ % emojis.length] }
+
+  // Detach transactions from old categories, then delete categories
+  db.prepare('UPDATE transactions SET category_id = NULL').run()
   db.prepare('DELETE FROM categories').run()
-  insertCategories(db, req.body)
-  res.json({ success: true })
+
+  const insertCat = db.prepare('INSERT INTO categories (name, icon, type, parent_id, sort_order) VALUES (?, ?, ?, ?, ?)')
+
+  db.exec('BEGIN')
+  try {
+    const parentMap = {}   // "type:parentName" -> new id
+    const childMap = {}    // "type:parentName:childName" -> new id or "type::childName" for top-level
+    let sort = 0
+
+    // Pass 1: Create parent categories (sorted by first occurrence in CSV)
+    for (const cat of uniqueCats) {
+      if (cat.parentName && !parentMap[`${cat.type}:${cat.parentName}`]) {
+        const icon = nextEmoji()
+        const info = insertCat.run(cat.parentName, icon, cat.type, null, sort++)
+        parentMap[`${cat.type}:${cat.parentName}`] = Number(info.lastInsertRowid)
+      }
+    }
+
+    // Pass 2: Create all categories (both top-level and children)
+    for (const cat of uniqueCats) {
+      if (cat.parentName) {
+        const parentKey = `${cat.type}:${cat.parentName}`
+        const childKey = `${cat.type}:${cat.parentName}:${cat.childName}`
+        if (childMap[childKey]) continue
+        const parentId = parentMap[parentKey]
+        if (!parentId) continue // edge case: parent missing
+        const icon = nextEmoji()
+        const info = insertCat.run(cat.childName, icon, cat.type, parentId, null)
+        childMap[childKey] = Number(info.lastInsertRowid)
+      } else {
+        const key = `${cat.type}::${cat.childName}`
+        if (childMap[key]) continue
+        // Skip if this name already exists as a parent (from Pass 1)
+        if (parentMap[`${cat.type}:${cat.childName}`]) {
+          childMap[key] = parentMap[`${cat.type}:${cat.childName}`]
+          continue
+        }
+        const icon = nextEmoji()
+        const info = insertCat.run(cat.childName, icon, cat.type, null, sort++)
+        childMap[key] = Number(info.lastInsertRowid)
+      }
+    }
+
+    // Update transaction category_ids to point to new categories
+    const updateTx = db.prepare('UPDATE transactions SET category_id = ? WHERE id = ?')
+    for (const r of rows) {
+      if (!r.cat_name) {
+        updateTx.run(null, r.id)
+        continue
+      }
+      const key = r.parent_name ? `${r.tx_type}:${r.parent_name}:${r.cat_name}` : `${r.tx_type}::${r.cat_name}`
+      updateTx.run(childMap[key] || null, r.id)
+    }
+
+    db.exec('COMMIT')
+  } catch (e) {
+    db.exec('ROLLBACK')
+    console.error('Rebuild categories error:', e)
+    return res.status(500).json({ error: 'rebuild_error', message: e.message })
+  }
+
+  res.json({ success: true, rebuilt: true, count: uniqueCats.length })
 })
 
 // ---------- transactions ----------
@@ -119,23 +215,24 @@ app.post('/api/categories/import', (req, res) => {
 app.get('/api/transactions', (req, res) => {
   const db = getDB()
   const { type, category_id, search, start, end, page = '1', limit = '50' } = req.query
-  let sql = 'SELECT * FROM transactions WHERE 1=1'
+  let fromWhere = 'FROM transactions t LEFT JOIN categories c ON t.category_id = c.id WHERE 1=1'
   const params = []
-  if (type) { sql += ' AND type = ?'; params.push(type) }
-  if (category_id) { sql += ' AND category_id = ?'; params.push(Number(category_id)) }
-  if (search) { sql += ' AND note LIKE ?'; params.push(`%${search}%`) }
-  if (start) { sql += ' AND date >= ?'; params.push(start) }
-  if (end) { sql += ' AND date <= ?'; params.push(end) }
-  const total = db.prepare(sql.replace('SELECT *', 'SELECT COUNT(*) as cnt')).get(...params).cnt
+  if (type) { fromWhere += ' AND t.type = ?'; params.push(type) }
+  if (category_id) { fromWhere += ' AND t.category_id = ?'; params.push(Number(category_id)) }
+  if (search) { fromWhere += ' AND t.note LIKE ?'; params.push(`%${search}%`) }
+  if (start) { fromWhere += ' AND t.date >= ?'; params.push(start) }
+  if (end) { fromWhere += ' AND t.date <= ?'; params.push(end) }
+  const total = db.prepare('SELECT COUNT(*) as cnt ' + fromWhere).get(...params).cnt
   const p = Math.max(1, Number(page) || 1)
   const lmt = Math.min(500, Math.max(1, Number(limit) || 50))
-  const data = db.prepare(sql + ' ORDER BY date DESC, id DESC LIMIT ? OFFSET ?').all(...params, lmt, (p - 1) * lmt)
+  const data = db.prepare('SELECT t.*, c.name as category_name, c.icon as category_icon ' + fromWhere + ' ORDER BY t.date DESC, t.id DESC LIMIT ? OFFSET ?').all(...params, lmt, (p - 1) * lmt)
   res.json({ data, total })
 })
 
 app.post('/api/transactions', (req, res) => {
   const db = getDB()
   const { category_id, amount, type, date, note } = req.body
+  if (type !== 'expense' && type !== 'income') return res.status(400).json({ error: 'invalid_type' })
   const a = Math.round(Number(amount) * 100) / 100
   const info = db.prepare('INSERT INTO transactions (category_id, amount, type, date, note) VALUES (?, ?, ?, ?, ?)')
     .run(category_id ? Number(category_id) : null, a, type, date || new Date().toISOString().slice(0, 10), (note || '').slice(0, 200))
@@ -211,6 +308,7 @@ app.post('/api/transactions/import', (req, res) => {
   const errors = []
 
   db.exec('BEGIN')
+  db.exec('DELETE FROM transactions')
   try {
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i]
@@ -237,6 +335,31 @@ app.post('/api/transactions/import', (req, res) => {
         if (parentName && name) { const cat = catsByNameType[`${type}:${parentName}:${name}`]; if (cat) categoryId = cat.id }
         if (!categoryId && name) { const cat = catsByNameType[`${type}:${name}`]; if (cat) categoryId = cat.id }
         if (!categoryId && parentName) { const cat = catsByNameType[`${type}:${parentName}`]; if (cat) categoryId = cat.id }
+        // Auto-create unmatched categories so imported data isn't all "未分类"
+        if (!categoryId) {
+          if (parentName && name) {
+            // Ensure parent exists
+            let parentCat = catsByNameType[`${type}:${parentName}`]
+            if (!parentCat) {
+              const pi = db.prepare('INSERT INTO categories (name, icon, type, parent_id) VALUES (?, ?, ?, NULL)').run(parentName, '📦', type)
+              const pid = Number(pi.lastInsertRowid)
+              parentCat = { id: pid, name: parentName, type, parent_id: null }
+              catsByNameType[`${type}:${parentName}`] = parentCat
+            }
+            // Create child under parent
+            const ci = db.prepare('INSERT INTO categories (name, icon, type, parent_id) VALUES (?, ?, ?, ?)').run(name, '📦', type, parentCat.id)
+            categoryId = Number(ci.lastInsertRowid)
+            catsByNameType[`${type}:${name}`] = { id: categoryId, name, type, parent_id: parentCat.id }
+            catsByNameType[`${type}:${parentName}:${name}`] = catsByNameType[`${type}:${name}`]
+          } else {
+            const catName = name || parentName
+            if (catName) {
+              const ci = db.prepare('INSERT INTO categories (name, icon, type, parent_id) VALUES (?, ?, ?, NULL)').run(catName, '📦', type)
+              categoryId = Number(ci.lastInsertRowid)
+              catsByNameType[`${type}:${catName}`] = { id: categoryId, name: catName, type, parent_id: null }
+            }
+          }
+        }
       }
 
       if (!Number.isFinite(amount) || amount <= 0) { errors.push({ row: i + 1, error: '金额无效' }); continue }
@@ -249,7 +372,8 @@ app.post('/api/transactions/import', (req, res) => {
     db.exec('COMMIT')
   } catch (e) {
     db.exec('ROLLBACK')
-    throw e
+    console.error('Import error:', e)
+    return res.status(500).json({ error: 'import_error', message: e.message || String(e) })
   }
   res.json({ imported, errors })
 })
