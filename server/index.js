@@ -1,11 +1,20 @@
 import express from 'express'
 import cors from 'cors'
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
 import { getDB, getPasswordHash, setPassword, checkPassword } from './db.js'
 import { getCategoryIcon } from '../src/data/categoryIcons.js'
 import { categoriesData } from '../src/data/categories.js'
 
 const app = express()
 const PORT = process.env.PORT || 3002
+
+// ---- production static serving (built frontend in dist/) ----
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+app.use(express.static(join(__dirname, '../dist')))
+
+// ---- middleware ----
 
 app.use(cors())
 app.use(express.json({ limit: '10mb' }))
@@ -412,6 +421,12 @@ app.post('/api/reset', (req, res) => {
   db.prepare('DELETE FROM categories').run()
   insertCategories(db, categoriesData)
   res.json({ success: true, message: '已重置为初始状态' })
+})
+
+// ---------- SPA fallback (production) ----------
+
+app.get('*', (req, res) => {
+  res.sendFile(join(__dirname, '../dist/index.html'))
 })
 
 // ---------- global error handler ----------
