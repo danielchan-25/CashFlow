@@ -5,10 +5,10 @@ import { Download, Upload, FileSpreadsheet, CheckCircle, AlertCircle } from 'luc
 
 const fields = [
   { key: 'date', label: '日期', required: true },
-  { key: 'type', label: '类型 (expense/income 或 支出/收入)', required: true },
-  { key: 'amount', label: '金额 (支出为负数)', required: true },
-  { key: 'category_parent', label: '大类名称 (留空则仅按中类匹配)' },
-  { key: 'category_name', label: '分类名称 (中类)' },
+  { key: 'type', label: '类型', required: true },
+  { key: 'amount', label: '金额', required: true },
+  { key: 'category_parent', label: '大类' },
+  { key: 'category_name', label: '中类' },
   { key: 'note', label: '备注' },
 ]
 
@@ -49,9 +49,27 @@ export default function DataIO() {
       setPreview({ headers, rows: rows.slice(0, 5) })
       const guess = {}
       const headerLower = headers.map(h => h.toLowerCase())
+
+      // Chinese keyword mapping for accounting apps (MoneyThings, etc.)
+      const zhFieldMap = {
+        date: ['交易时间', '交易日期', '日期', '时间'],
+        type: ['交易类型', '收支类型', '类型', '收支'],
+        amount: ['交易金额', '金额', '人民币'],
+        category_parent: ['大类', '父类', '一级分类'],
+        category_name: ['中类', '分类名称', '子类', '二级分类', '小类'],
+        note: ['备注', '说明', '摘要', '描述'],
+      }
+
       fields.forEach(f => {
-        const idx = headerLower.findIndex(h => h.includes(f.key.replace(/_/g, '').toLowerCase()))
-        if (idx >= 0) guess[f.key] = idx
+        // Try English keyword match (existing logic)
+        const engIdx = headerLower.findIndex(h => h.includes(f.key.replace(/_/g, '').toLowerCase()))
+        if (engIdx >= 0) { guess[f.key] = engIdx; return }
+        // Try Chinese keyword match
+        const zhKeywords = zhFieldMap[f.key] || []
+        for (const kw of zhKeywords) {
+          const zhIdx = headerLower.findIndex(h => h.includes(kw))
+          if (zhIdx >= 0) { guess[f.key] = zhIdx; return }
+        }
       })
       setMapping(guess)
     }

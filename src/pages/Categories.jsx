@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { api } from '../lib/api'
-import { categoriesData } from '../data/categories'
+
 import { Tags, Plus, X, ChevronDown, ChevronRight, Upload } from 'lucide-react'
 
-const expenseEmojis = ['🍱','🚗','🏠','👕','📱','💊','🎮','📚','✈️','🎁','💄','🏋️','🐱','💼','🛒','🍜','☕','🎬','🎵','🐾','🍪','🍻','🧴','🚌','🚘','🏢','💡','🔑','🛋️','🏨','🎯','📋','📞','☁️','🎤','🖨️','🏥','💆','🧧','🏡','🎓','📖','🏕️','🔒','🌸','🐶','🔗','💉','🩺','💇','🍽️','🥡','🍳','🚇','🚄','🚕','⛽','🅿️','🔧','🛣️','🎫','🤖','🍎','🌐','🖥️','🍖','🪣','🛏️','🔒']
+const expenseEmojis = ['🍱','🚗','🏠','👕','📱','💊','🎮','📚','✈️','🎁','💄','🏋️','🐱','💼','🛒','🍜','☕','🎬','🎵','🐾','🍪','🍻','🧴','🚌','🚘','🏢','💡','🔑','🛋️','🏨','🎯','📋','📞','☁️','🎤','🖨️','🏥','💆','🧧','🏡','🎓','📖','🏕️','🔒','🌸','🐶','🔗','💉','🩺','💇','🍽️','🥡','🍳','🚇','🚄','🚕','⛽','🅿️','🔧','🛣️','🎫','🤖','🍎','🌐','🖥️','🍖','🪣','🛏️']
 const incomeEmojis = ['💰','💳','🏦','💵','💶','💷','💸','💎','👑','🧧','📈','🏢','💼','🎯','⭐','🔄','🏪','🛍️','🎉','🏆']
 
 export default function Categories() {
@@ -157,13 +157,17 @@ export default function Categories() {
   }
 
   async function handleImport() {
-    if (!confirm('将清空所有分类和交易记录，从 categories.js 重新导入，确定？')) return
+    if (!confirm('将根据现有交易数据重建分类结构并分配新图标，保留所有交易记录，确定？')) return
     try {
-      await api.importCategories(categoriesData)
+      const res = await api.importCategories({})
       await loadCategories()
-      alert('✅ 导入成功')
+      if (res.rebuilt) {
+        alert(`✅ 分类已重建，共 ${res.count} 个分类`)
+      } else {
+        alert('✅ 已清空所有分类（无交易数据）')
+      }
     } catch (err) {
-      alert('导入失败：' + err.message)
+      alert('操作失败：' + err.message)
     }
   }
 
@@ -180,7 +184,7 @@ export default function Categories() {
           <button onClick={handleImport}
             className="px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-muted text-muted-foreground hover:bg-accent transition-all active:scale-[0.97] flex items-center gap-1">
             <Upload size={13} />
-            <span className="hidden sm:inline">🔄 重新导入</span>
+            <span className="hidden sm:inline">🔄 重置默认分类</span>
             <span className="sm:hidden">导入</span>
           </button>
           <button onClick={() => setShowForm(!showForm)}

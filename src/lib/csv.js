@@ -1,5 +1,7 @@
 export function parseCSV(text) {
-  const lines = text.trim().split('\n')
+  // Strip BOM (\uFEFF) and normalize line endings (CRLF → LF)
+  const content = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '').trim()
+  const lines = content.split('\n')
   if (lines.length < 2) return { headers: [], rows: [] }
 
   const headers = parseLine(lines[0])
